@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>Extra Life Overlay</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+</head>
+<body>
+  <div id="overlay">
+
+    <!-- Top banner (default visible) -->
+    <div id="banner-top">
+      <img src="assets/ExtraLife-TopLine.png" alt="">
+    </div>
+
+    <!-- Bottom banner (shown every 15 min for 1 min) -->
+    <div id="banner-bottom">
+      <img src="assets/ExtraLife-BottomTxtFields.png" alt="">
+      <div id="banner-field-follower"   class="banner-field"></div>
+      <div id="banner-field-subscriber" class="banner-field"></div>
+      <div id="banner-field-donor"      class="banner-field"></div>
+      <div id="banner-field-top-donor"  class="banner-field"></div>
+    </div>
+
+    <!-- Persistent zones -->
+    <div id="zone-totals"></div>
+    <div id="zone-current-game"></div>
+
+    <!-- Widget slot (one visible at a time) -->
+    <div id="widget-slot">
+      <div id="widget-donation"     class="widget"></div>
+      <div id="widget-next-game"    class="widget"></div>
+      <div id="widget-full-schedule" class="widget"></div>
+      <div id="widget-dixper-menu"  class="widget"></div>
+      <div id="widget-dixper-skills" class="widget"></div>
+    </div>
+
+  </div>
+
+  <script src="js/schedule.js"></script>
+  <script src="js/donations.js"></script>
+  <script src="js/dixper.js"></script>
+  <script src="js/widgets.js"></script>
+  <script src="js/twitch.js"></script>
+  <script src="js/banner.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

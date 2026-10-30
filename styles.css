@@ -1,0 +1,123 @@
+:root {
+  --color-bg: transparent;
+  --color-panel: rgba(0, 0, 0, 0.75);
+  --color-accent: #e8233a;
+  --color-text: #ffffff;
+  --color-text-muted: #cccccc;
+  --font-primary: 'Segoe UI', Arial, sans-serif;
+  --z-persistent: 10;
+  --z-widgets: 20;
+  --z-brand: 30;
+  --transition-widget: transform 0.4s ease, opacity 0.4s ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: var(--color-bg);
+  font-family: var(--font-primary);
+  color: var(--color-text);
+}
+
+#overlay {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+}
+
+/* --- Banners --- */
+
+#banner-top,
+#banner-bottom {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  z-index: var(--z-brand);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+}
+
+#banner-top img,
+#banner-bottom img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+}
+
+/* Default: both off-screen */
+#banner-top    { transform: translateY(-110%); }
+#banner-bottom { transform: translateY(110%); }
+
+/* Both slide to their natural positions together */
+#banner-top.visible    { transform: translateY(0); }
+#banner-bottom.visible { transform: translateY(0); }
+
+/* Text field overlays on the bottom banner's white boxes */
+/* Positions calibrated for 1920×1080 — tune after visual test */
+.banner-field {
+  position: absolute;
+  bottom: 22px;
+  font-family: var(--font-primary);
+  font-size: 17px;
+  font-weight: 600;
+  color: #111;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#banner-field-follower   { left: 42px;   width: 182px; }
+#banner-field-subscriber { left: 300px;  width: 182px; }
+#banner-field-donor      { left: 952px;  width: 195px; }
+#banner-field-top-donor  { left: 1210px; width: 195px; }
+
+/* --- Persistent zones --- */
+
+#zone-totals {
+  position: absolute;
+  z-index: var(--z-persistent);
+  /* positioned in layout pass */
+}
+
+#zone-current-game {
+  position: absolute;
+  z-index: var(--z-persistent);
+  /* positioned in layout pass */
+}
+
+/* --- Widget slot --- */
+
+#widget-slot {
+  position: absolute;
+  z-index: var(--z-widgets);
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.widget {
+  position: absolute;
+  opacity: 0;
+  transform: translateX(110%);
+  transition: var(--transition-widget);
+  pointer-events: none;
+  background: var(--color-panel);
+  /* size and position set per-widget in layout pass */
+}
+
+.widget.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
