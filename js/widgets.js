@@ -11,6 +11,8 @@ var Widgets = (function () {
   // Call to action under the Dixper skill list (features.md #6).
   var DIXPER_CTA = 'Donate with the widget below to trigger the effects!';
 
+  var MAX_MESSAGE_CHARS = 64;   // donor messages past this are ellipsised
+
   var queue = [];
   var isShowing = false;
   var queuedTypes = new Set();
@@ -103,13 +105,35 @@ var Widgets = (function () {
     return document.getElementById(map[type]) || null;
   }
 
+  // Shortens a donor message to MAX_MESSAGE_CHARS. Backs up to the last word
+  // boundary when there is one reasonably near the limit, so the cut does not
+  // land mid-word, then drops any trailing punctuation before the ellipsis.
+  // Runs on the raw text — truncating after escaping could slice an HTML
+  // entity like &amp; in half.
+  function truncateMessage(text) {
+    if (!text) return '';
+
+    var msg = String(text).trim().replace(/\s+/g, ' ');
+    if (msg.length <= MAX_MESSAGE_CHARS) return msg;
+
+    var cut = msg.slice(0, MAX_MESSAGE_CHARS);
+    var lastSpace = cut.lastIndexOf(' ');
+
+    // Only honour the word boundary if it is not so early that it would throw
+    // most of the allowance away — e.g. one very long unbroken word up front.
+    if (lastSpace > MAX_MESSAGE_CHARS * 0.6) cut = cut.slice(0, lastSpace);
+
+    return cut.replace(/[\s,.;:!?-]+$/, '') + '…';
+  }
+
   function queueDonation(donation) {
     enqueue('donation', function (el) {
+      var message = truncateMessage(donation.message);
       el.innerHTML =
         '<div class="widget-label">New Donation</div>' +
         '<div class="widget-donor">' + escapeHtml(donation.displayName || 'Anonymous') + '</div>' +
         '<div class="widget-amount">' + Donations.formatCurrency(donation.amount) + '</div>' +
-        (donation.message ? '<div class="widget-message">' + escapeHtml(donation.message) + '</div>' : '');
+        (message ? '<div class="widget-message">' + escapeHtml(message) + '</div>' : '');
     });
   }
 

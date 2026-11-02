@@ -5,6 +5,7 @@ var Donations = (function () {
   var API_VERSION = '?version=1.6';
 
   var seenDonationIds = new Set();
+  var baselineTaken = false;   // see fetchDonations
   var totalsEtag = null;
 
   var totals = {
@@ -53,12 +54,30 @@ var Donations = (function () {
         if (donations.length) {
           latestDonor = donations[0].displayName || 'Anonymous';
         }
-        donations.forEach(function (d) {
-          if (!seenDonationIds.has(d.donationID)) {
-            seenDonationIds.add(d.donationID);
-            Widgets.queueDonation(d);
-          }
+
+        // The API returns newest first. Reverse so that when several arrive
+        // between two polls, they are announced oldest first.
+        var fresh = donations.slice().reverse().filter(function (d) {
+          if (seenDonationIds.has(d.donationID)) return false;
+          seenDonationIds.add(d.donationID);
+          return true;
         });
+
+        // The first successful poll only records what already exists; it does
+        // not announce it. Without this, every page load replays the last 10
+        // donations as if they were new — and OBS reloads a browser source on
+        // scene switches and on restart, so that would happen repeatedly
+        // through the event, each replay costing minutes of stale alerts.
+        if (!baselineTaken) {
+          baselineTaken = true;
+          if (fresh.length) {
+            console.info('[overlay] donation baseline: ' + fresh.length +
+              ' existing donation(s) recorded, not announced');
+          }
+          return;
+        }
+
+        fresh.forEach(function (d) { Widgets.queueDonation(d); });
       })
       .catch(function (err) {
         console.warn('Donations poll failed:', err);
@@ -111,6 +130,33 @@ var Donations = (function () {
     return '$' + Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  // Test helper. Never called by the overlay — it exists to be typed into the
+  // browser console, so the alert can be seen without waiting on a real
+  // donation. Pushes through the same path a live donation takes, with the
+  // field shape the live API returns (donationID / displayName / amount /
+  // message, where message may be null).
+  //
+  //   Donations.simulate()
+  //   Donations.simulate({ displayName: 'Ada L', amount: 250, message: 'Go!' })
+  //   Donations.simulate({ message: null })        // a donation with no note
+  //   Donations.simulate({}, 3)                    // three, to watch them queue
+  function simulate(overrides, count) {
+    var n = count || 1;
+    for (var i = 0; i < n; i++) {
+      var d = {
+        donationID:  'SIMULATED-' + Date.now() + '-' + i,
+        displayName: 'Test Donor',
+        amount:      42.5,
+        message:     'Testing the alert!'
+      };
+      var o = overrides || {};
+      for (var k in o) {
+        if (Object.prototype.hasOwnProperty.call(o, k)) d[k] = o[k];
+      }
+      Widgets.queueDonation(d);
+    }
+  }
+
   function getTotals()      { return totals; }
   function getLatestDonor() { return latestDonor; }
   function getTopDonor()    { return topDonor; }
@@ -125,5 +171,6 @@ var Donations = (function () {
 
   return { init: init, getTotals: getTotals, formatCurrency: formatCurrency,
            getLatestDonor: getLatestDonor, getTopDonor: getTopDonor,
-           fetchTopDonor: fetchTopDonor };
+           fetchTopDonor: fetchTopDonor,
+           simulate: simulate };   // console test helper, see above
 })();

@@ -40,13 +40,18 @@ Shows the fundraising progress for both the individual participant and the team.
 When a new donation is detected, it interrupts the widget queue at high priority and displays a notification card.
 
 **Displayed data:**
-- Donor display name (or "Anonymous")
+- Donor display name (or "Anonymous" — the API returns `null` for anonymous donors)
 - Donation amount
-- Message (if provided)
+- Message, if provided. The API returns `null` when there is none, in which case no message element is rendered at all
+
+**Message length:** messages are capped at `MAX_MESSAGE_CHARS` (64) in `js/widgets.js` and ellipsised past that. The cut backs up to the last word boundary when one falls reasonably near the limit, so it does not land mid-word, and any trailing punctuation is dropped before the ellipsis. Truncation runs on the raw text *before* HTML escaping — doing it after could slice an entity such as `&amp;` in half.
 
 **Behavior:**
 - Polls `GET /participants/{id}/donations` every `CONFIG.timing.donationPollMs` (default 60s)
+- **The first successful poll takes a baseline:** it records the donation IDs that already exist without announcing them. Without this, every page load replays the last 10 donations as if they were new — and OBS reloads a browser source on scene switches and on restart, so it would recur through the event, each time costing minutes of stale alerts. The baseline is tied to the first *successful* response, so a failed first poll does not cause the next one to announce a backlog
+- The API returns newest-first; iteration is reversed so that several donations arriving between two polls are announced oldest-first
 - Tracks seen donation IDs so each donation fires exactly once
+- `Donations.simulate()` is a console-only test helper that pushes a donation through this same path, so the alert can be exercised without waiting on a real one. It is never called by the overlay
 - Notification slides in, holds for `widgetDisplayMs`, then slides out
 - If multiple new donations arrive simultaneously, they queue and display sequentially
 - Donation notification takes priority over all timed widgets
