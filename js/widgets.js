@@ -1,17 +1,28 @@
 // Timed widget rotation engine
-// Priority queue: donations (1) > next game (2) > dixper skills (3) > dixper menu (4) > full schedule (5)
+// Priority queue: donations (1) > dixper skills (2) > dixper menu (3) > full schedule (4)
+// The current / upcoming game zone is NOT in this queue — it is a persistent
+// zone owned by schedule.js (features.md #4).
 
 var Widgets = (function () {
-  var PRIORITY = { donation: 1, nextGame: 2, dixperSkills: 3, dixperMenu: 4, fullSchedule: 5 };
+  var PRIORITY = { donation: 1, dixperSkills: 2, dixperMenu: 3, fullSchedule: 4 };
+
+  var MAX_SCHEDULE_PAGES = 3;   // features.md #5 — bounds how long the widget holds
 
   var queue = [];
   var isShowing = false;
   var queuedTypes = new Set();
 
-  function enqueue(type, renderFn) {
+  // `render` is either a single function or an array of page render functions.
+  // Each page is held for `holdMs`, defaulting to the standard widgetDisplayMs.
+  function enqueue(type, render, holdMs) {
     if (queuedTypes.has(type) && type !== 'donation') return;
     queuedTypes.add(type);
-    queue.push({ type: type, priority: PRIORITY[type], render: renderFn });
+    queue.push({
+      type: type,
+      priority: PRIORITY[type],
+      hold: holdMs || CONFIG.timing.widgetDisplayMs,
+      pages: Array.isArray(render) ? render : [render]
+    });
     queue.sort(function (a, b) { return a.priority - b.priority; });
     if (!isShowing) processQueue();
   }
@@ -23,21 +34,29 @@ var Widgets = (function () {
     queuedTypes.delete(item.type);
 
     var el = getWidgetEl(item.type);
-    if (!el) { processQueue(); return; }
+    if (!el || !item.pages.length) { processQueue(); return; }
 
-    item.render(el);
+    var index = 0;
+    item.pages[0](el);
     el.classList.add('visible');
 
-    setTimeout(function () {
+    function advance() {
+      index++;
+      if (index < item.pages.length) {
+        item.pages[index](el);
+        setTimeout(advance, item.hold);
+        return;
+      }
       el.classList.remove('visible');
       setTimeout(processQueue, 400); // wait for CSS transition out
-    }, CONFIG.timing.widgetDisplayMs);
+    }
+
+    setTimeout(advance, item.hold);
   }
 
   function getWidgetEl(type) {
     var map = {
       donation:     'widget-donation',
-      nextGame:     'widget-next-game',
       fullSchedule: 'widget-full-schedule',
       dixperMenu:   'widget-dixper-menu',
       dixperSkills: 'widget-dixper-skills'
@@ -48,37 +67,66 @@ var Widgets = (function () {
   function queueDonation(donation) {
     enqueue('donation', function (el) {
       el.innerHTML =
-        '<div class="widget-donor">' + (donation.displayName || 'Anonymous') + '</div>' +
+        '<div class="widget-label">New Donation</div>' +
+        '<div class="widget-donor">' + escapeHtml(donation.displayName || 'Anonymous') + '</div>' +
         '<div class="widget-amount">' + Donations.formatCurrency(donation.amount) + '</div>' +
         (donation.message ? '<div class="widget-message">' + escapeHtml(donation.message) + '</div>' : '');
     });
   }
 
-  function scheduleTimedWidgets() {
-    setInterval(function () {
-      var next = Schedule.getNextGame();
-      if (!next) return;
-      enqueue('nextGame', function (el) {
-        el.innerHTML =
-          '<div class="widget-label">Up Next</div>' +
-          '<div class="widget-game">' + escapeHtml(next.game) + '</div>' +
-          '<div class="widget-time">' + formatTime(next.startTime) + '</div>';
-      });
-    }, CONFIG.timing.nextGameWidgetMs);
+  // Builds the shell once, then swaps only the rows. The title is never
+  // re-rendered, so it cannot shift between pages. Short pages are padded with
+  // hidden rows: the widget is bottom-anchored, so a change in panel height
+  // would push the title up or down.
+  function renderSchedulePage(el, rows, padTo) {
+    var body = el.querySelector('.widget-schedule-pages');
+    if (!body) {
+      el.innerHTML =
+        '<div class="widget-label">Today\'s Schedule</div>' +
+        '<div class="widget-schedule-pages"></div>';
+      body = el.querySelector('.widget-schedule-pages');
+    }
 
-    setInterval(function () {
+    var html = rows.map(function (g) {
+      return '<div class="widget-schedule-row">' +
+        '<span class="widget-time">' + formatTime(g.startTime) + '</span>' +
+        '<span class="widget-game">' + escapeHtml(g.game || 'Break') + '</span>' +
+        '</div>';
+    }).join('');
+
+    for (var i = rows.length; i < padTo; i++) {
+      html += '<div class="widget-schedule-row is-filler">' +
+        '<span class="widget-time">&nbsp;</span>' +
+        '<span class="widget-game">&nbsp;</span>' +
+        '</div>';
+    }
+
+    body.innerHTML = html;
+  }
+
+  function scheduleTimedWidgets() {
+    function queueFullSchedule() {
       var remaining = Schedule.getRemainingGames();
       if (!remaining.length) return;
-      enqueue('fullSchedule', function (el) {
-        el.innerHTML = '<div class="widget-label">Today\'s Schedule</div>' +
-          remaining.map(function (g) {
-            return '<div class="widget-schedule-row">' +
-              '<span class="widget-time">' + formatTime(g.startTime) + '</span>' +
-              '<span class="widget-game">' + escapeHtml(g.game) + '</span>' +
-              '</div>';
-          }).join('');
-      });
-    }, CONFIG.timing.fullScheduleWidgetMs);
+
+      var perPage = CONFIG.fullScheduleRowsPerPage;
+      var pages = [];
+      for (var i = 0; i < remaining.length && pages.length < MAX_SCHEDULE_PAGES; i += perPage) {
+        pages.push(remaining.slice(i, i + perPage));
+      }
+
+      // Only pad when there is more than one page — a lone short page would
+      // otherwise sit above a block of dead space.
+      var padTo = pages.length > 1 ? perPage : 0;
+
+      enqueue('fullSchedule', pages.map(function (rows) {
+        return function (el) { renderSchedulePage(el, rows, padTo); };
+      }), CONFIG.timing.fullSchedulePageMs);
+    }
+
+    // Show the lineup once at load, then on the normal interval.
+    queueFullSchedule();
+    setInterval(queueFullSchedule, CONFIG.timing.fullScheduleWidgetMs);
 
     setInterval(function () {
       var items = Dixper.getMenuItems();

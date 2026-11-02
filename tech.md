@@ -45,7 +45,9 @@ var CONFIG = {
   timing: {
     donationPollMs:       60000,   // Extra Life donation poll interval
     totalsPollMs:        120000,   // Extra Life totals poll interval
-    nextGameWidgetMs:    600000,   // show "next game" every 10 min
+    upcomingPreviewMarksMin: [20, 15, 10, 5], // minutes-left marks for an "up next" preview
+    upcomingPreviewMs:    30000,   // how long each preview holds
+    upcomingTakeoverMin:      2,   // final minutes showing "up next" only
     fullScheduleWidgetMs:1800000,  // show full schedule every 30 min
     dixperMenuWidgetMs:  900000,   // show Dixper menu every 15 min
     dixperSkillsWidgetMs:420000,   // show skill suggestions every 7 min
@@ -111,17 +113,24 @@ Widgets are overlay panels that slide in, display for `widgetDisplayMs`, then sl
 - Each widget type registers itself with an interval (from `CONFIG.timing`)
 - When a widget's interval fires, it enters a **queue**
 - The engine dequeues and displays one widget at a time
+- A widget supplies either a single render function or an array of page render functions, plus an optional per-item hold duration (defaults to `widgetDisplayMs`); the engine draws each page, waits that long, then advances, hiding after the last
 - New donations are highest priority — they jump the queue
 - CSS transitions handle enter/exit animation (translate + opacity); no JS animation
 
 ```
 setInterval fires → push to queue
-queue processor → pop next → add .visible class → wait widgetDisplayMs → remove .visible
+queue processor → pop next → add .visible class
+                → draw page, wait widgetDisplayMs, repeat for each page
+                → remove .visible
 ```
 
 ## schedule.js
 
-Determines the current and next game by comparing `new Date()` against each schedule entry's `startTime`/`endTime`. No external dependency. Updates checked whenever a widget needs current-game context (not on its own timer — called on demand).
+Determines the current and next game by comparing `new Date()` against each schedule entry's `startTime`/`endTime`. No external dependency, no API calls.
+
+Also owns the **current / upcoming game zone** (`#zone-current-game`) — feature 4 in `features.md`. The lookup helpers are still called on demand, but the zone runs its own 1-second tick so it can catch the 20/15/10/5-minute preview marks and the final 2-minute takeover as they pass.
+
+The tick keeps a per-slot record of which marks have already fired and clears it when the active slot changes — without that, a mark re-triggers on every tick for a full minute. The zone re-paints only when its rendered content actually changes, so the fade transition does not restart each second.
 
 ## donations.js
 

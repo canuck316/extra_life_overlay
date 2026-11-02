@@ -2,6 +2,10 @@ var CONFIG = {
   participantId: 574238,   // your Extra Life participant ID
   teamId: 74505,          // your Extra Life team ID
 
+  // Full schedule widget: rows per page. Paged up to 3 pages, so at most
+  // 3 x this many games are shown.
+  fullScheduleRowsPerPage: 5,
+
   twitch: {
     clientId: '',       // Twitch app Client ID (from dev.twitch.tv)
     accessToken: '',    // pre-generated User Access Token (generate before event)
@@ -109,11 +113,14 @@ var CONFIG = {
   timing: {
     donationPollMs:        60000,   // 1 min
     totalsPollMs:         120000,   // 2 min
-    nextGameWidgetMs:     60000,//600000,   // 10 min
+    upcomingPreviewMarksMin: [20, 15, 10, 5],  // minutes-left marks that trigger an "up next" preview
+    upcomingPreviewMs:    10000,//30000,    // 30 sec — how long each preview holds
+    upcomingTakeoverMin:      2,            // final minutes showing "up next" only
     fullScheduleWidgetMs: 90000,//1800000,  // 30 min
     dixperMenuWidgetMs:   9000,//900000,   // 15 min
     dixperSkillsWidgetMs: 6000, //420000,   // 7 min
-    widgetDisplayMs:       20000,   // 20 sec
+    widgetDisplayMs:       20000,   // 20 sec — standard hold for one widget
+    fullSchedulePageMs:    10000,   // 10 sec — per schedule page (half the standard hold)
     bannerSwapMs:         5000,//900000,   // 15 min — how often bottom bar appears
     bannerDisplayMs:       3000,//60000    // 1 min  — how long bottom bar stays
   }

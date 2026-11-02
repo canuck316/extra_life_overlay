@@ -1,10 +1,18 @@
 :root {
   --color-bg: transparent;
-  --color-panel: rgba(0, 0, 0, 0.75);
-  --color-accent: #e8233a;
+
+  /* Extra Life brand palette, sampled from the official banner art */
+  --color-brand-yellow:     #ffcb05;   /* banner yellow */
+  --color-brand-blue-dark:  14, 124, 162;   /* the bar itself, as rgb components */
+  --color-brand-blue-light: 74, 156, 185;   /* balloon watermarks on the bar */
+
+  /* Panel scrim: the brand dark blue, held at the opacity the grey panels used */
+  --color-panel: rgba(var(--color-brand-blue-dark), 0.72);
+
   --color-text: #ffffff;
   --color-text-muted: #cccccc;
   --font-primary: 'Segoe UI', Arial, sans-serif;
+
   --z-persistent: 10;
   --z-widgets: 20;
   --z-brand: 30;
@@ -32,7 +40,10 @@ body {
   height: 1080px;
 }
 
-/* --- Banners --- */
+/* --- Banners -------------------------------------------------------------
+   Full-canvas PNGs. The top art occupies roughly y 0-110, the bottom art
+   y 945-1080; persistent zones are placed clear of both so the banners
+   never cover live data when they slide in. */
 
 #banner-top,
 #banner-bottom {
@@ -59,18 +70,18 @@ body {
 #banner-top    { transform: translateY(-110%); }
 #banner-bottom { transform: translateY(110%); }
 
-/* Both slide to their natural positions together */
 #banner-top.visible    { transform: translateY(0); }
 #banner-bottom.visible { transform: translateY(0); }
 
-/* Text field overlays on the bottom banner's white boxes */
-/* Positions calibrated for 1920×1080 — tune after visual test */
+/* Text drops into the four white boxes on the bottom banner art. */
 .banner-field {
   position: absolute;
-  bottom: 22px;
+  bottom: 20px;
+  height: 42px;
+  line-height: 42px;
   font-family: var(--font-primary);
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
   color: #111;
   text-align: center;
   white-space: nowrap;
@@ -78,26 +89,133 @@ body {
   text-overflow: ellipsis;
 }
 
-#banner-field-follower   { left: 42px;   width: 182px; }
-#banner-field-subscriber { left: 300px;  width: 182px; }
-#banner-field-donor      { left: 952px;  width: 195px; }
-#banner-field-top-donor  { left: 1210px; width: 195px; }
+#banner-field-follower   { left: 78px;   width: 292px; }
+#banner-field-subscriber { left: 404px;  width: 296px; }
+#banner-field-donor      { left: 1232px; width: 300px; }
+#banner-field-top-donor  { left: 1562px; width: 296px; }
 
-/* --- Persistent zones --- */
-
-#zone-totals {
-  position: absolute;
-  z-index: var(--z-persistent);
-  /* positioned in layout pass */
-}
+/* --- Persistent zone: current / upcoming game (features.md #4) ----------- */
 
 #zone-current-game {
   position: absolute;
+  top: 136px;
+  left: 48px;
+  width: 560px;
+  padding: 18px 26px;
   z-index: var(--z-persistent);
-  /* positioned in layout pass */
+  background: var(--color-panel);
+  border-left: 6px solid var(--color-brand-yellow);
+  border-radius: 6px;
 }
 
-/* --- Widget slot --- */
+/* Cross-fade between the current and upcoming states.
+   Duration must match FADE_MS in js/schedule.js. */
+#game-zone-inner {
+  transition: opacity 0.3s ease;
+}
+
+#game-zone-inner.fading {
+  opacity: 0;
+}
+
+.game-label {
+  margin-bottom: 4px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-brand-yellow);
+}
+
+.game-name {
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.game-time {
+  margin-top: 6px;
+  font-size: 22px;
+  color: var(--color-text-muted);
+}
+
+/* --- Persistent zone: fundraising totals --------------------------------- */
+
+#zone-totals {
+  position: absolute;
+  top: 136px;
+  right: 48px;
+  width: 420px;
+  padding: 18px 26px;
+  z-index: var(--z-persistent);
+  background: var(--color-panel);
+  border-right: 6px solid var(--color-brand-yellow);
+  border-radius: 6px;
+}
+
+.totals-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.totals-label {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-brand-yellow);
+}
+
+.totals-value {
+  font-size: 38px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.totals-row-team {
+  margin-top: 12px;
+}
+
+.totals-row-team .totals-value {
+  font-size: 26px;
+}
+
+.totals-bar {
+  margin-top: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: rgb(var(--color-brand-blue-light));
+  overflow: hidden;
+}
+
+.totals-bar-fill {
+  width: 0;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--color-brand-yellow);
+  transition: width 0.8s ease;
+}
+
+.totals-goal {
+  margin-top: 6px;
+  font-size: 17px;
+  color: var(--color-text-muted);
+}
+
+/* Brief highlight when a polled value actually changes */
+@keyframes value-flash {
+  0%   { color: var(--color-brand-yellow); transform: scale(1.06); }
+  100% { color: var(--color-text);         transform: scale(1); }
+}
+
+.totals-value.flash {
+  display: inline-block;
+  animation: value-flash 1.2s ease-out;
+}
+
+/* --- Widget slot ---------------------------------------------------------- */
 
 #widget-slot {
   position: absolute;
@@ -109,15 +227,78 @@ body {
 
 .widget {
   position: absolute;
+  right: 48px;
+  bottom: 190px;
+  width: 560px;
+  max-height: 620px;
+  padding: 22px 28px;
+  overflow: hidden;
   opacity: 0;
   transform: translateX(110%);
   transition: var(--transition-widget);
   pointer-events: none;
   background: var(--color-panel);
-  /* size and position set per-widget in layout pass */
+  border-right: 6px solid var(--color-brand-yellow);
+  border-radius: 6px;
 }
 
 .widget.visible {
   opacity: 1;
   transform: translateX(0);
+}
+
+.widget-label {
+  margin-bottom: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-brand-yellow);
+}
+
+/* Donation notification */
+.widget-donor  { font-size: 32px; font-weight: 700; }
+.widget-amount { font-size: 44px; font-weight: 700; color: var(--color-brand-yellow); }
+.widget-message {
+  margin-top: 8px;
+  font-size: 20px;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+/* Schedule and Dixper rows */
+.widget-schedule-row,
+.widget-dixper-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 5px 0;
+  font-size: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.widget-schedule-row .widget-time {
+  min-width: 96px;
+  font-weight: 700;
+  color: var(--color-brand-yellow);
+}
+
+.widget-schedule-row .widget-game { flex: 1; }
+
+/* Pads a short page so the panel height — and so the title — stays put */
+.widget-schedule-row.is-filler { visibility: hidden; }
+
+.widget-dixper-row .widget-skill { flex: 1; font-weight: 600; }
+
+.widget-dixper-row .widget-cost {
+  min-width: 56px;
+  text-align: right;
+  font-weight: 700;
+  color: var(--color-brand-yellow);
+}
+
+.widget-dixper-row .widget-desc {
+  flex: 2;
+  font-size: 17px;
+  color: var(--color-text-muted);
 }

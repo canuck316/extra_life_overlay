@@ -10,12 +10,12 @@
 <body>
   <div id="overlay">
 
-    <!-- Top banner (default visible) -->
+    <!-- Branding banners. Both start off-screen and slide in together every
+         bannerSwapMs, holding for bannerDisplayMs. -->
     <div id="banner-top">
       <img src="assets/ExtraLife-TopLine.png" alt="">
     </div>
 
-    <!-- Bottom banner (shown every 15 min for 1 min) -->
     <div id="banner-bottom">
       <img src="assets/ExtraLife-BottomTxtFields.png" alt="">
       <div id="banner-field-follower"   class="banner-field"></div>
@@ -24,16 +24,33 @@
       <div id="banner-field-top-donor"  class="banner-field"></div>
     </div>
 
-    <!-- Persistent zones -->
-    <div id="zone-totals"></div>
-    <div id="zone-current-game"></div>
+    <!-- Persistent zone: fundraising totals -->
+    <div id="zone-totals">
+      <div class="totals-row">
+        <span class="totals-label">Raised</span>
+        <span class="totals-value" id="totals-participant">$0.00</span>
+      </div>
+      <div class="totals-bar">
+        <div class="totals-bar-fill" id="totals-bar-fill"></div>
+      </div>
+      <div class="totals-goal" id="totals-goal">&nbsp;</div>
+      <div class="totals-row totals-row-team">
+        <span class="totals-label">Team</span>
+        <span class="totals-value" id="totals-team">$0.00</span>
+      </div>
+    </div>
+
+    <!-- Persistent zone: current / upcoming game (features.md #4).
+         Contents swap between the two states; the zone itself never moves. -->
+    <div id="zone-current-game">
+      <div id="game-zone-inner"></div>
+    </div>
 
     <!-- Widget slot (one visible at a time) -->
     <div id="widget-slot">
-      <div id="widget-donation"     class="widget"></div>
-      <div id="widget-next-game"    class="widget"></div>
+      <div id="widget-donation"      class="widget"></div>
       <div id="widget-full-schedule" class="widget"></div>
-      <div id="widget-dixper-menu"  class="widget"></div>
+      <div id="widget-dixper-menu"   class="widget"></div>
       <div id="widget-dixper-skills" class="widget"></div>
     </div>
 

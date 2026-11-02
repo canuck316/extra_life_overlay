@@ -82,7 +82,29 @@ var Donations = (function () {
   }
 
   function renderTotals() {
-    // TODO: update #zone-totals DOM
+    var pEl    = document.getElementById("totals-participant");
+    var tEl    = document.getElementById("totals-team");
+    var goalEl = document.getElementById("totals-goal");
+    var fillEl = document.getElementById("totals-bar-fill");
+    if (!pEl) return;   // zone not in the DOM
+
+    setValue(pEl, formatCurrency(totals.participantTotal));
+    setValue(tEl, formatCurrency(totals.teamTotal));
+
+    var goal = Number(totals.participantGoal) || 0;
+    var pct  = goal > 0 ? Math.min(100, (totals.participantTotal / goal) * 100) : 0;
+
+    fillEl.style.width = pct.toFixed(1) + "%";
+    goalEl.textContent = goal > 0 ? Math.round(pct) + "% of " + formatCurrency(goal) : "";
+  }
+
+  // Writes a value, flashing it only when it actually changed.
+  function setValue(el, text) {
+    if (!el || el.textContent === text) return;
+    el.textContent = text;
+    el.classList.remove("flash");
+    void el.offsetWidth;          // force reflow so the animation restarts
+    el.classList.add("flash");
   }
 
   function formatCurrency(amount) {
