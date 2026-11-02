@@ -50,8 +50,8 @@ var CONFIG = {
   timing: {
     donationPollMs:       60000,   // Extra Life donation poll interval
     totalsPollMs:        120000,   // Extra Life totals poll interval
-    upcomingPreviewMarksMin: [20, 15, 10, 5], // minutes-left marks for an "up next" preview
-    upcomingPreviewMs:    30000,   // how long each preview holds
+    upcomingAlternateFromMin: 15,  // minutes left when the run-in alternation starts
+    upcomingAlternateEveryMs: 15000, // how long each side holds
     upcomingTakeoverMin:      2,   // final minutes showing "up next" only
     rotationRestMs:      300000,   // rest between widget rotations
     widgetDisplayMs:      20000,   // how long each widget stays visible
@@ -147,9 +147,13 @@ init → runRotation
 
 Determines the current and next game by comparing `new Date()` against each schedule entry's `startTime`/`endTime`. No external dependency, no API calls.
 
-Also owns the **current / upcoming game zone** (`#zone-current-game`) — feature 4 in `features.md`. The lookup helpers are still called on demand, but the zone runs its own 1-second tick so it can catch the 20/15/10/5-minute preview marks and the final 2-minute takeover as they pass.
+Also owns the **current / upcoming game zone** (`#zone-current-game`) — feature 4 in `features.md`. The lookup helpers are still called on demand, but the zone runs its own 1-second tick so it can follow the run-in alternation and the final 2-minute takeover.
 
-The tick keeps a per-slot record of which marks have already fired and clears it when the active slot changes — without that, a mark re-triggers on every tick for a full minute. The zone re-paints only when its rendered content actually changes, so the fade transition does not restart each second.
+`desiredState()` is a **pure function of the clock**: given a time it returns `current` or `upcoming` with no stored state. It holds `current` until `upcomingAlternateFromMin`, alternates every `upcomingAlternateEveryMs` through the run-in, then returns `upcoming` for the last `upcomingTakeoverMin`. An earlier design used discrete preview marks at 20/15/10/5 minutes and needed per-slot "already fired" bookkeeping, reset on every slot change, because a 1-second tick would otherwise re-trigger the same mark for a full minute. Deriving the state removed that bookkeeping entirely.
+
+The alternation grid is anchored to the **start of the run-in** (`fromMin * 60000 - msLeft`), not to page load and not to the slot's end. Page load would re-phase the cadence on every OBS source refresh; the slot's end leaves a partial period at the boundary, which shows as a single-tick flash of "up next" at exactly 15:00 before it settles.
+
+The zone re-paints only when its rendered content actually changes, so the fade transition does not restart on each tick.
 
 Two distinct fallback labels, deliberately not merged: `UNDECIDED_LABEL` ("Undecided") for a slot whose `game` is empty, and `OFF_SCHEDULE_LABEL` ("Taking a Break") for the clock sitting outside every slot. An empty `game` is streaming time with an unchosen title, so it keeps the "Now Playing" label and "until <end>" phrasing; only the off-schedule case means nothing is on. `UNDECIDED_LABEL` is exported on the module so `widgets.js` renders schedule rows with the same string.
 

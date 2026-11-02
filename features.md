@@ -78,27 +78,28 @@ Driven entirely by the time remaining in the current slot (`endTime` minus now):
 
 | Time left in slot | Displayed |
 |---|---|
-| More than 20 min | Current game |
-| At 20, 15, 10, and 5 min | Upcoming game for 30s, then fades back to current game |
+| More than 15 min | Current game |
+| Final 15 min down to 2 min | **Alternates** between current and upcoming every 15s, starting on upcoming |
 | Final 2 min | Upcoming game only, until the slot ends |
 
 - Transitions are a **fade** — the outgoing text fades out, the incoming text fades in. No slide animation.
-- Each preview mark fires **exactly once per slot**. The zone tracks which marks have already fired and resets that state on slot change; without this, a per-second clock tick re-triggers the same mark repeatedly for a full minute.
-- The final-2-minute takeover **outranks** a preview. If the 5-minute preview is still on screen when the 2-minute mark arrives, the zone stays on the upcoming game rather than fading back.
-- Marks that exceed the slot's own length are skipped. A 2-hour slot uses all four marks; a 10-minute slot only ever reaches the 5-minute mark.
+- The alternation is a **pure function of the clock**. There is no per-slot bookkeeping to reset and nothing to arm or expire: given a time, the state is computable directly. This replaced an earlier scheme of discrete preview marks at 20/15/10/5 minutes, which needed fired-once tracking per slot precisely because it was event-driven rather than derived.
+- The grid is anchored to the **moment the run-in begins**, not to page load and not to the slot's end. Anchoring to page load would shift the cadence on every OBS source refresh; anchoring to the slot's end leaves a partial period at the 15-minute boundary, which flashes "up next" for a single tick before settling.
+- The final-2-minute takeover **outranks** the alternation, so the last switch is into the upcoming game and it stays there.
+- A slot shorter than the run-in simply starts alternating from its first second — there is nothing to skip.
+
+**Configuration:**
+- `CONFIG.timing.upcomingAlternateFromMin` — minutes left when alternating begins (default `15`)
+- `CONFIG.timing.upcomingAlternateEveryMs` — how long each side holds (default `15000`)
+- `CONFIG.timing.upcomingTakeoverMin` — final minutes showing upcoming only (default `2`)
 
 ### Edge cases
 
-- **No next game** (final slot of the event): previews and the takeover are both suppressed — the zone stays on the current game for the entire slot.
-- **Undecided slots**: a schedule entry with an empty `game` string is **not a break** — it is a real slot whose game has not been picked yet. The zone keeps the normal "Now Playing" label and "until <end time>" phrasing, and shows "Undecided" where the title would go. The slot is running; only its name is unknown. Upcoming-game previews run normally, and an undecided slot appearing as the *next* game shows "Up Next / Undecided / at <start time>".
+- **No next game** (final slot of the event): the alternation and the takeover are both suppressed — the zone stays on the current game for the entire slot.
+- **Undecided slots**: a schedule entry with an empty `game` string is **not a break** — it is a real slot whose game has not been picked yet. The zone keeps the normal "Now Playing" label and "until <end time>" phrasing, and shows "Undecided" where the title would go. The slot is running; only its name is unknown. The run-in alternation works normally, and an undecided slot appearing as the *next* game shows "Up Next / Undecided / at <start time>".
 - **Clock outside every slot** (before the event opens or after it closes): this is the only state where nothing is scheduled at all. The zone shows a separate off-schedule label ("Taking a Break") and uses the upcoming game's name and start time if one exists.
 
-**Configuration:**
-- `CONFIG.timing.upcomingPreviewMarksMin` — minutes-remaining marks that trigger a preview (default `[20, 15, 10, 5]`)
-- `CONFIG.timing.upcomingPreviewMs` — how long each preview holds (default `30000`)
-- `CONFIG.timing.upcomingTakeoverMin` — minutes of final upcoming-only display (default `2`)
-
-`CONFIG.timing.nextGameWidgetMs` is **obsolete** — the upcoming game is no longer an interval-driven queued widget.
+`CONFIG.timing.nextGameWidgetMs`, `upcomingPreviewMarksMin` and `upcomingPreviewMs` are all **obsolete** — the upcoming game is not an interval-driven queued widget, and the discrete preview marks are gone in favour of the alternation above.
 
 ---
 

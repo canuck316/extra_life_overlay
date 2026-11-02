@@ -10,7 +10,8 @@ var CONFIG = {
   // the live API with the real clock.
   //
   // SET THIS TO null BEFORE THE EVENT.
-  debugClockStart: '2026-11-07T08:10:00',   // 10 min into the first game slot
+  // e.g. '2026-11-07T08:10:00' = 10 min into the first game slot.
+  debugClockStart: null,
   // -------------------------------------------------------------------------
 
   // Full schedule widget: rows per page. Paged up to 3 pages, so at most
@@ -142,9 +143,12 @@ var CONFIG = {
   timing: {
     donationPollMs:        60000,   // 1 min
     totalsPollMs:         120000,   // 2 min
-    upcomingPreviewMarksMin: [20, 15, 10, 5],  // minutes-left marks that trigger an "up next" preview
-    upcomingPreviewMs:    10000,//30000,    // 30 sec — how long each preview holds
-    upcomingTakeoverMin:      2,            // final minutes showing "up next" only
+    // Run-in to the end of a slot: the game zone alternates between the
+    // current game and the next one, then shows only the next one for the
+    // final stretch.
+    upcomingAlternateFromMin: 15,           // start alternating with this many minutes left
+    upcomingAlternateEveryMs: 15000,        // 15 sec — how long each side holds
+    upcomingTakeoverMin:       2,           // final minutes showing "up next" only
     // The widget rotation is one fixed sequence: schedule -> Dixper skills ->
     // rest -> repeat. This is the rest, measured from the moment the Dixper
     // widget finishes sliding out.

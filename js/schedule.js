@@ -14,9 +14,6 @@ var Schedule = (function () {
   var FADE_MS = 300;   // must match the CSS transition on #game-zone-inner
 
   var innerEl       = null;
-  var firedMarks    = {};     // preview marks already used in the active slot
-  var activeSlotKey = null;
-  var previewUntil  = 0;      // epoch ms — a preview holds the zone until then
   var lastHtml      = null;
   var clockOffsetMs = 0;      // CONFIG.debugClockStart shifts the clock by this
 
@@ -60,28 +57,25 @@ var Schedule = (function () {
   function desiredState(t, current, next) {
     if (!current || !next) return 'current';
 
-    var minsLeft = (new Date(current.endTime) - t) / 60000;
-    var takeover = CONFIG.timing.upcomingTakeoverMin;
+    var msLeft   = new Date(current.endTime) - t;
+    var minsLeft = msLeft / 60000;
 
-    // Final stretch wins outright, including over a preview still in flight.
-    if (minsLeft <= takeover) return 'upcoming';
+    // Final stretch wins outright — upcoming only, no more alternating.
+    if (minsLeft <= CONFIG.timing.upcomingTakeoverMin) return 'upcoming';
 
-    // Arm a preview as its mark is crossed. The `> mark - 1` bound stops a
-    // mark firing retroactively when the page loads mid-slot; the firedMarks
-    // guard stops it repeating on every tick for the whole minute after.
-    var marks = CONFIG.timing.upcomingPreviewMarksMin || [];
-    for (var i = 0; i < marks.length; i++) {
-      var mark = marks[i];
-      if (mark <= takeover) continue;          // the takeover would swallow it
-      if (firedMarks[mark]) continue;
-      if (minsLeft <= mark && minsLeft > mark - 1) {
-        firedMarks[mark] = true;
-        previewUntil = t.getTime() + CONFIG.timing.upcomingPreviewMs;
-        break;
-      }
-    }
+    // Outside the run-in, the zone just shows what is playing.
+    if (minsLeft > CONFIG.timing.upcomingAlternateFromMin) return 'current';
 
-    return t.getTime() < previewUntil ? 'upcoming' : 'current';
+    // Inside the run-in, alternate on a grid anchored to the moment the run-in
+    // began — not to when the page loaded, so the cadence survives a reload or
+    // an OBS source refresh, and not to the slot's end, which would leave a
+    // sub-second sliver of a period at the boundary and flash 'upcoming' for
+    // one tick before settling. Measuring forwards from the boundary makes the
+    // first period a full one, so the zone switches to 'upcoming' cleanly on
+    // the 15-minute mark and holds it.
+    var intoRunIn = (CONFIG.timing.upcomingAlternateFromMin * 60000) - msLeft;
+    var periods   = Math.floor(intoRunIn / CONFIG.timing.upcomingAlternateEveryMs);
+    return periods % 2 === 0 ? 'upcoming' : 'current';
   }
 
   function viewFor(state, current, next) {
@@ -142,14 +136,6 @@ var Schedule = (function () {
     var t       = now();
     var current = getCurrentGame();
     var next    = getNextGame();
-
-    // Reset per-slot preview bookkeeping whenever the active slot changes.
-    var key = current ? current.startTime : 'none';
-    if (key !== activeSlotKey) {
-      activeSlotKey = key;
-      firedMarks    = {};
-      previewUntil  = 0;
-    }
 
     paint(viewFor(desiredState(t, current, next), current, next));
   }
