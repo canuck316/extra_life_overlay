@@ -2,7 +2,14 @@
 // owns the persistent current / upcoming game zone (features.md #4).
 
 var Schedule = (function () {
-  var FALLBACK_LABEL = 'Taking a Break';
+  // A slot with an empty `game` is scheduled but not yet chosen — NOT a break.
+  // Something is being played in that hour; the lineup just isn't settled.
+  var UNDECIDED_LABEL = 'Undecided';
+
+  // Used only when the clock sits outside every slot, which is the one case
+  // where nothing is scheduled at all.
+  var OFF_SCHEDULE_LABEL = 'Taking a Break';
+
   var TICK_MS = 1000;
   var FADE_MS = 300;   // must match the CSS transition on #game-zone-inner
 
@@ -11,28 +18,38 @@ var Schedule = (function () {
   var activeSlotKey = null;
   var previewUntil  = 0;      // epoch ms — a preview holds the zone until then
   var lastHtml      = null;
+  var clockOffsetMs = 0;      // CONFIG.debugClockStart shifts the clock by this
+
+  // --- clock -----------------------------------------------------------------
+
+  // The single source of "now" for everything schedule-derived. Offsetting here
+  // rather than rewriting the schedule dates means the simulated clock still
+  // ticks forward in real time, so previews and slot changes fire normally.
+  function now() {
+    return new Date(Date.now() + clockOffsetMs);
+  }
 
   // --- lookups ---------------------------------------------------------------
 
   function getCurrentGame() {
-    var now = new Date();
+    var t = now();
     return CONFIG.schedule.find(function (entry) {
-      return now >= new Date(entry.startTime) && now < new Date(entry.endTime);
+      return t >= new Date(entry.startTime) && t < new Date(entry.endTime);
     }) || null;
   }
 
   function getNextGame() {
-    var now = new Date();
+    var t = now();
     var upcoming = CONFIG.schedule
-      .filter(function (entry) { return new Date(entry.startTime) > now; })
+      .filter(function (entry) { return new Date(entry.startTime) > t; })
       .sort(function (a, b) { return new Date(a.startTime) - new Date(b.startTime); });
     return upcoming[0] || null;
   }
 
   function getRemainingGames() {
-    var now = new Date();
+    var t = now();
     return CONFIG.schedule
-      .filter(function (entry) { return new Date(entry.endTime) > now; })
+      .filter(function (entry) { return new Date(entry.endTime) > t; })
       .sort(function (a, b) { return new Date(a.startTime) - new Date(b.startTime); });
   }
 
@@ -40,10 +57,10 @@ var Schedule = (function () {
 
   // Which state the zone belongs in right now: 'current' or 'upcoming'.
   // Side effect: arms a preview when a mark is crossed.
-  function desiredState(now, current, next) {
+  function desiredState(t, current, next) {
     if (!current || !next) return 'current';
 
-    var minsLeft = (new Date(current.endTime) - now) / 60000;
+    var minsLeft = (new Date(current.endTime) - t) / 60000;
     var takeover = CONFIG.timing.upcomingTakeoverMin;
 
     // Final stretch wins outright, including over a preview still in flight.
@@ -59,36 +76,31 @@ var Schedule = (function () {
       if (firedMarks[mark]) continue;
       if (minsLeft <= mark && minsLeft > mark - 1) {
         firedMarks[mark] = true;
-        previewUntil = now.getTime() + CONFIG.timing.upcomingPreviewMs;
+        previewUntil = t.getTime() + CONFIG.timing.upcomingPreviewMs;
         break;
       }
     }
 
-    return now.getTime() < previewUntil ? 'upcoming' : 'current';
+    return t.getTime() < previewUntil ? 'upcoming' : 'current';
   }
 
   function viewFor(state, current, next) {
     if (state === 'upcoming' && next) {
       return {
         label: 'Up Next',
-        name:  next.game || FALLBACK_LABEL,
+        name:  next.game || UNDECIDED_LABEL,
         time:  'at ' + formatTime(next.startTime)
       };
     }
 
     if (current) {
-      // An entry with an empty game name is a scheduled break.
-      if (current.game) {
-        return {
-          label: 'Now Playing',
-          name:  current.game,
-          time:  'until ' + formatTime(current.endTime)
-        };
-      }
+      // An empty game name means the slot is still undecided. It keeps the
+      // "Now Playing" label and the "until" phrasing, because the slot is
+      // running either way — only the title is unknown.
       return {
-        label: '',
-        name:  FALLBACK_LABEL,
-        time:  'back at ' + formatTime(current.endTime)
+        label: 'Now Playing',
+        name:  current.game || UNDECIDED_LABEL,
+        time:  'until ' + formatTime(current.endTime)
       };
     }
 
@@ -96,11 +108,11 @@ var Schedule = (function () {
     if (next) {
       return {
         label: '',
-        name:  FALLBACK_LABEL,
+        name:  OFF_SCHEDULE_LABEL,
         time:  'Up next at ' + formatTime(next.startTime)
       };
     }
-    return { label: '', name: FALLBACK_LABEL, time: '' };
+    return { label: '', name: OFF_SCHEDULE_LABEL, time: '' };
   }
 
   function paint(view) {
@@ -127,7 +139,7 @@ var Schedule = (function () {
   }
 
   function tick() {
-    var now     = new Date();
+    var t       = now();
     var current = getCurrentGame();
     var next    = getNextGame();
 
@@ -139,7 +151,7 @@ var Schedule = (function () {
       previewUntil  = 0;
     }
 
-    paint(viewFor(desiredState(now, current, next), current, next));
+    paint(viewFor(desiredState(t, current, next), current, next));
   }
 
   // --- helpers ---------------------------------------------------------------
@@ -157,6 +169,21 @@ var Schedule = (function () {
   }
 
   function init() {
+    // Set the offset first: main.js inits Schedule before Widgets, so the
+    // widgets' first read of the schedule already sees the simulated clock.
+    if (CONFIG.debugClockStart) {
+      var target = new Date(CONFIG.debugClockStart);
+      if (isNaN(target)) {
+        console.error('[overlay] CONFIG.debugClockStart is not a valid date: ' +
+          CONFIG.debugClockStart + ' — using the real clock');
+      } else {
+        clockOffsetMs = target.getTime() - Date.now();
+        console.warn('[overlay] DEBUG CLOCK ACTIVE — simulating ' +
+          target.toLocaleString() + '. Set CONFIG.debugClockStart to null ' +
+          'before the event.');
+      }
+    }
+
     innerEl = document.getElementById('game-zone-inner');
     if (!innerEl) return;
     tick();
@@ -167,6 +194,8 @@ var Schedule = (function () {
     init: init,
     getCurrentGame: getCurrentGame,
     getNextGame: getNextGame,
-    getRemainingGames: getRemainingGames
+    getRemainingGames: getRemainingGames,
+    now: now,                          // exposed so the console can check the clock
+    UNDECIDED_LABEL: UNDECIDED_LABEL   // so the schedule widget matches the zone
   };
 })();

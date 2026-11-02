@@ -30,6 +30,9 @@ var CONFIG = {
 
   schedule: [
     {
+      // An empty string means the slot is scheduled but the game is not yet
+      // chosen; it renders as "Undecided". It does NOT mean a break — every
+      // slot in the schedule is streaming time.
       game: "Game Name",
       startTime: "2025-11-01T08:00:00",  // ISO 8601, local time
       endTime:   "2025-11-01T10:00:00",
@@ -37,9 +40,11 @@ var CONFIG = {
     }
   ],
 
+  // Name/value pairs only. `value` is a whole-dollar amount, as a string.
+  // Skills are matched to schedule entries by `name`.
   dixperMenu: [
-    { skill: "Screen Blur", dollarAmount: 5,  description: "Blurs the game screen for 30s" },
-    { skill: "Invert Colors", dollarAmount: 3, description: "Inverts display colors for 15s" }
+    { name: "Screen Blur",   value: "5" },
+    { name: "Invert Colors", value: "3" }
   ],
 
   timing: {
@@ -48,10 +53,9 @@ var CONFIG = {
     upcomingPreviewMarksMin: [20, 15, 10, 5], // minutes-left marks for an "up next" preview
     upcomingPreviewMs:    30000,   // how long each preview holds
     upcomingTakeoverMin:      2,   // final minutes showing "up next" only
-    fullScheduleWidgetMs:1800000,  // show full schedule every 30 min
-    dixperMenuWidgetMs:  900000,   // show Dixper menu every 15 min
-    dixperSkillsWidgetMs:420000,   // show skill suggestions every 7 min
-    widgetDisplayMs:      20000    // how long each widget stays visible
+    rotationRestMs:      300000,   // rest between widget rotations
+    widgetDisplayMs:      20000,   // how long each widget stays visible
+    fullSchedulePageMs:   10000    // per page of the paged schedule widget
   }
 };
 ```
@@ -110,19 +114,34 @@ Donations endpoint returns newest-first by default. Track seen `donationID` valu
 
 Widgets are overlay panels that slide in, display for `widgetDisplayMs`, then slide out. They share a single display slot — only one widget is visible at a time.
 
-- Each widget type registers itself with an interval (from `CONFIG.timing`)
-- When a widget's interval fires, it enters a **queue**
-- The engine dequeues and displays one widget at a time
-- A widget supplies either a single render function or an array of page render functions, plus an optional per-item hold duration (defaults to `widgetDisplayMs`); the engine draws each page, waits that long, then advances, hiding after the last
-- New donations are highest priority — they jump the queue
+- The scheduled widgets are driven by a **chained rotation**, not by per-widget intervals: `runRotation()` queues the schedule, and only when that has left the screen does it queue the Dixper widget, and only when *that* has left does it arm a `rotationRestMs` timer to start the next cycle
+- Chaining is deliberate. With a `setInterval` per widget type, the higher-priority Dixper widget re-queued itself while the schedule was mid-display and then won the slot immediately after, starving the lower-priority schedule indefinitely. A fixed sequence removes the contention rather than tuning intervals to avoid it
+- `enqueue(type, render, holdMs, opts)` — `opts.done` is what makes chaining possible. It must fire on **every** path, including when a widget declines to show (no remaining games, no active slot) and when an enqueue is rejected as a duplicate; otherwise the chain stalls and the overlay goes quiet for the rest of the event
+- `opts.hiding` fires the instant a panel starts its exit transition, 400ms before `done`. It exists so the top banner can leave together with the last widget instead of trailing it by the length of the transition
+- `render` is either a single function or an array of page render functions; the engine draws each page, waits `holdMs` (default `widgetDisplayMs`), then advances, hiding after the last
+- New donations still enter the same queue at highest priority — they jump ahead of the rotation's next step, but never cut off a widget already on screen
 - CSS transitions handle enter/exit animation (translate + opacity); no JS animation
 
 ```
-setInterval fires → push to queue
-queue processor → pop next → add .visible class
-                → draw page, wait widgetDisplayMs, repeat for each page
-                → remove .visible
+init → runRotation
+         ↓
+       Banner.show()
+         ↓
+       queue schedule ──→ display pages ──→ onDone
+                                              ↓
+       queue dixper skills ──→ display ──→ onHiding → Banner.hide()
+                                        └─→ onDone
+                                              ↓
+                                    wait rotationRestMs
+                                              ↓
+                                         runRotation
 ```
+
+## banner.js
+
+`assets/ExtraLife-TopLine.png` as a full-canvas layer, parked at `translateY(-110%)` and slid to `0` by a `.visible` class. No timers: `show()` / `hide()` are called by `runRotation()`, so the banner is up exactly while a rotation widget is. Both are idempotent, which matters because `hide()` is called twice per cycle (on `onHiding`, then again on `onDone`) and may be called without a matching `show()` when a rotation step is skipped.
+
+`main.js` must call `Banner.init()` **before** `Widgets.init()`, since the rotation starts synchronously inside `Widgets.init()` and shows the banner on its first line.
 
 ## schedule.js
 
@@ -131,6 +150,16 @@ Determines the current and next game by comparing `new Date()` against each sche
 Also owns the **current / upcoming game zone** (`#zone-current-game`) — feature 4 in `features.md`. The lookup helpers are still called on demand, but the zone runs its own 1-second tick so it can catch the 20/15/10/5-minute preview marks and the final 2-minute takeover as they pass.
 
 The tick keeps a per-slot record of which marks have already fired and clears it when the active slot changes — without that, a mark re-triggers on every tick for a full minute. The zone re-paints only when its rendered content actually changes, so the fade transition does not restart each second.
+
+Two distinct fallback labels, deliberately not merged: `UNDECIDED_LABEL` ("Undecided") for a slot whose `game` is empty, and `OFF_SCHEDULE_LABEL` ("Taking a Break") for the clock sitting outside every slot. An empty `game` is streaming time with an unchosen title, so it keeps the "Now Playing" label and "until <end>" phrasing; only the off-schedule case means nothing is on. `UNDECIDED_LABEL` is exported on the module so `widgets.js` renders schedule rows with the same string.
+
+## dixper.js
+
+Pure lookup over static `CONFIG` data — no polling, no state. Resolves a schedule entry's `suggestedDixperSkills` name strings against `CONFIG.dixperMenu` by `name`, capped at 4.
+
+`MAX_SUGGESTIONS = 4` is a hard ceiling on both paths, not a page size. The full menu is never displayed, so `CONFIG.dixperMenu` serves only as the price lookup table and the random-draw pool.
+
+A slot with no suggestions of its own falls back to 4 menu items picked at random (partial Fisher-Yates over a copy of the menu). `widgets.js` calls the resolver **inside** the render function rather than before enqueueing, for two reasons: the random set is supposed to differ on every appearance, and a queued widget may not reach the screen until the schedule has moved into a different slot.
 
 ## donations.js
 

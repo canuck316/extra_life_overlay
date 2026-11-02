@@ -2,6 +2,17 @@ var CONFIG = {
   participantId: 574238,   // your Extra Life participant ID
   teamId: 74505,          // your Extra Life team ID
 
+  // ---- TESTING ONLY -------------------------------------------------------
+  // Pretend the event is already running. Set to an ISO time inside the
+  // schedule and the overlay behaves as if that were the clock, then advances
+  // in real time from there — so previews and slot changes still fire on their
+  // own. Affects only schedule-derived display; donation polling still hits
+  // the live API with the real clock.
+  //
+  // SET THIS TO null BEFORE THE EVENT.
+  debugClockStart: '2026-11-07T08:10:00',   // 10 min into the first game slot
+  // -------------------------------------------------------------------------
+
   // Full schedule widget: rows per page. Paged up to 3 pages, so at most
   // 3 x this many games are shown.
   fullScheduleRowsPerPage: 5,
@@ -134,12 +145,13 @@ var CONFIG = {
     upcomingPreviewMarksMin: [20, 15, 10, 5],  // minutes-left marks that trigger an "up next" preview
     upcomingPreviewMs:    10000,//30000,    // 30 sec — how long each preview holds
     upcomingTakeoverMin:      2,            // final minutes showing "up next" only
-    fullScheduleWidgetMs: 90000,//1800000,  // 30 min
-    dixperMenuWidgetMs:   9000,//900000,   // 15 min
-    dixperSkillsWidgetMs: 6000, //420000,   // 7 min
+    // The widget rotation is one fixed sequence: schedule -> Dixper skills ->
+    // rest -> repeat. This is the rest, measured from the moment the Dixper
+    // widget finishes sliding out.
+    rotationRestMs:       300000,   // 5 min
     widgetDisplayMs:       20000,   // 20 sec — standard hold for one widget
-    fullSchedulePageMs:    10000,   // 10 sec — per schedule page (half the standard hold)
-    bannerSwapMs:         5000,//900000,   // 15 min — how often bottom bar appears
-    bannerDisplayMs:       3000,//60000    // 1 min  — how long bottom bar stays
+    fullSchedulePageMs:    10000    // 10 sec — per schedule page (half the standard hold)
+    // The top banner has no timing of its own — it is on screen for exactly as
+    // long as the rotation's widgets are.
   }
 };

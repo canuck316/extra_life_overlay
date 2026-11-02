@@ -1,12 +1,15 @@
 // Timed widget rotation engine
-// Priority queue: donations (1) > dixper skills (2) > dixper menu (3) > full schedule (4)
+// Priority queue: donations (1) > dixper skills (2) > full schedule (3)
 // The current / upcoming game zone is NOT in this queue — it is a persistent
 // zone owned by schedule.js (features.md #4).
 
 var Widgets = (function () {
-  var PRIORITY = { donation: 1, dixperSkills: 2, dixperMenu: 3, fullSchedule: 4 };
+  var PRIORITY = { donation: 1, dixperSkills: 2, fullSchedule: 3 };
 
   var MAX_SCHEDULE_PAGES = 3;   // features.md #5 — bounds how long the widget holds
+
+  // Call to action under the Dixper skill list (features.md #6).
+  var DIXPER_CTA = 'Donate with the widget below to trigger the effects!';
 
   var queue = [];
   var isShowing = false;
@@ -14,17 +17,42 @@ var Widgets = (function () {
 
   // `render` is either a single function or an array of page render functions.
   // Each page is held for `holdMs`, defaulting to the standard widgetDisplayMs.
-  function enqueue(type, render, holdMs) {
-    if (queuedTypes.has(type) && type !== 'donation') return;
+  //
+  // `opts.done`   fires once this widget has finished sliding out. The rotation
+  //               chains on it, so it must fire on every path — including the
+  //               paths that decline to show anything.
+  // `opts.hiding` fires the instant the panel starts sliding out, 400ms before
+  //               `done`. The banner uses this so it leaves with the panel
+  //               instead of trailing it.
+  function enqueue(type, render, holdMs, opts) {
+    opts = opts || {};
+    if (queuedTypes.has(type) && type !== 'donation') {
+      safely(type + ' onDone', opts.done);   // already pending — don't stall the chain
+      return;
+    }
     queuedTypes.add(type);
     queue.push({
       type: type,
       priority: PRIORITY[type],
       hold: holdMs || CONFIG.timing.widgetDisplayMs,
-      pages: Array.isArray(render) ? render : [render]
+      pages: Array.isArray(render) ? render : [render],
+      done: opts.done || null,
+      hiding: opts.hiding || null
     });
     queue.sort(function (a, b) { return a.priority - b.priority; });
     if (!isShowing) processQueue();
+  }
+
+  // The rotation is a chain, so an exception anywhere in it would stop every
+  // widget for the rest of the event rather than costing one appearance. Each
+  // link runs inside this, which logs and carries on.
+  function safely(label, fn) {
+    if (!fn) return;
+    try {
+      fn();
+    } catch (err) {
+      console.error('[overlay] widget ' + label + ' failed:', err);
+    }
   }
 
   function processQueue() {
@@ -34,21 +62,33 @@ var Widgets = (function () {
     queuedTypes.delete(item.type);
 
     var el = getWidgetEl(item.type);
-    if (!el || !item.pages.length) { processQueue(); return; }
+    if (!el || !item.pages.length) {
+      // Nothing will be shown, so release anything waiting on this panel —
+      // otherwise a missing element leaves the banner stranded on screen.
+      safely(item.type + ' onHiding', item.hiding);
+      safely(item.type + ' onDone', item.done);
+      processQueue();
+      return;
+    }
 
     var index = 0;
-    item.pages[0](el);
+    safely(item.type + ' page 1', function () { item.pages[0](el); });
     el.classList.add('visible');
 
     function advance() {
       index++;
       if (index < item.pages.length) {
-        item.pages[index](el);
+        var page = index;
+        safely(item.type + ' page ' + (page + 1), function () { item.pages[page](el); });
         setTimeout(advance, item.hold);
         return;
       }
+      safely(item.type + ' onHiding', item.hiding);
       el.classList.remove('visible');
-      setTimeout(processQueue, 400); // wait for CSS transition out
+      setTimeout(function () {   // wait for the CSS transition out
+        safely(item.type + ' onDone', item.done);
+        processQueue();
+      }, 400);
     }
 
     setTimeout(advance, item.hold);
@@ -58,7 +98,6 @@ var Widgets = (function () {
     var map = {
       donation:     'widget-donation',
       fullSchedule: 'widget-full-schedule',
-      dixperMenu:   'widget-dixper-menu',
       dixperSkills: 'widget-dixper-skills'
     };
     return document.getElementById(map[type]) || null;
@@ -90,7 +129,7 @@ var Widgets = (function () {
     var html = rows.map(function (g) {
       return '<div class="widget-schedule-row">' +
         '<span class="widget-time">' + formatTime(g.startTime) + '</span>' +
-        '<span class="widget-game">' + escapeHtml(g.game || 'Break') + '</span>' +
+        '<span class="widget-game">' + escapeHtml(g.game || Schedule.UNDECIDED_LABEL) + '</span>' +
         '</div>';
     }).join('');
 
@@ -104,59 +143,79 @@ var Widgets = (function () {
     body.innerHTML = html;
   }
 
-  function scheduleTimedWidgets() {
-    function queueFullSchedule() {
-      var remaining = Schedule.getRemainingGames();
-      if (!remaining.length) return;
+  function renderDixperRow(item) {
+    return '<div class="widget-dixper-row">' +
+      '<span class="widget-skill">' + escapeHtml(item.name) + '</span>' +
+      '<span class="widget-cost">$' + escapeHtml(String(item.value).trim()) + '</span>' +
+      '</div>';
+  }
 
-      var perPage = CONFIG.fullScheduleRowsPerPage;
-      var pages = [];
-      for (var i = 0; i < remaining.length && pages.length < MAX_SCHEDULE_PAGES; i += perPage) {
-        pages.push(remaining.slice(i, i + perPage));
-      }
+  function queueFullSchedule(onDone) {
+    var remaining = Schedule.getRemainingGames();
+    if (!remaining.length) { if (onDone) onDone(); return; }   // event over
 
-      // Only pad when there is more than one page — a lone short page would
-      // otherwise sit above a block of dead space.
-      var padTo = pages.length > 1 ? perPage : 0;
-
-      enqueue('fullSchedule', pages.map(function (rows) {
-        return function (el) { renderSchedulePage(el, rows, padTo); };
-      }), CONFIG.timing.fullSchedulePageMs);
+    var perPage = CONFIG.fullScheduleRowsPerPage;
+    var pages = [];
+    for (var i = 0; i < remaining.length && pages.length < MAX_SCHEDULE_PAGES; i += perPage) {
+      pages.push(remaining.slice(i, i + perPage));
     }
 
-    // Show the lineup once at load, then on the normal interval.
-    queueFullSchedule();
-    setInterval(queueFullSchedule, CONFIG.timing.fullScheduleWidgetMs);
+    // Only pad when there is more than one page — a lone short page would
+    // otherwise sit above a block of dead space.
+    var padTo = pages.length > 1 ? perPage : 0;
 
-    setInterval(function () {
-      var items = Dixper.getMenuItems();
-      if (!items.length) return;
-      enqueue('dixperMenu', function (el) {
-        el.innerHTML = '<div class="widget-label">Dixper Effects Menu</div>' +
-          items.map(function (item) {
-            return '<div class="widget-dixper-row">' +
-              '<span class="widget-skill">' + escapeHtml(item.skill) + '</span>' +
-              '<span class="widget-cost">$' + item.dollarAmount + '</span>' +
-              '<span class="widget-desc">' + escapeHtml(item.description) + '</span>' +
-              '</div>';
-          }).join('');
-      });
-    }, CONFIG.timing.dixperMenuWidgetMs);
+    enqueue('fullSchedule', pages.map(function (rows) {
+      return function (el) { renderSchedulePage(el, rows, padTo); };
+    }), CONFIG.timing.fullSchedulePageMs, { done: onDone });
+  }
 
-    setInterval(function () {
-      var skills = Dixper.getSuggestedSkillsForCurrentGame();
-      if (!skills.length) return;
+  function queueDixperSkills(onDone, onHiding) {
+    if (!Schedule.getCurrentGame()) {      // nothing on — skip straight through
+      safely('dixperSkills onHiding', onHiding);
+      if (onDone) onDone();
+      return;
+    }
+
+    enqueue('dixperSkills', function (el) {
+      // Read at render time, not queue time: a slot with no suggestions of
+      // its own draws a fresh random set each time this animates in, and by
+      // now the queue may have moved us into a different slot.
       var current = Schedule.getCurrentGame();
-      enqueue('dixperSkills', function (el) {
-        el.innerHTML = '<div class="widget-label">Try These on ' + escapeHtml(current.game) + '</div>' +
-          skills.map(function (item) {
-            return '<div class="widget-dixper-row">' +
-              '<span class="widget-skill">' + escapeHtml(item.skill) + '</span>' +
-              '<span class="widget-cost">$' + item.dollarAmount + '</span>' +
-              '</div>';
-          }).join('');
-      });
-    }, CONFIG.timing.dixperSkillsWidgetMs);
+      var skills  = Dixper.getSuggestedSkillsForCurrentGame();
+      if (!current || !skills.length) { el.innerHTML = ''; return; }
+
+      el.innerHTML =
+        '<div class="widget-label">' +
+          (current.game ? 'Try These on ' + escapeHtml(current.game) : 'Try These') +
+        '</div>' +
+        skills.map(renderDixperRow).join('') +
+        '<div class="widget-cta">' + escapeHtml(DIXPER_CTA) + '</div>';
+    }, CONFIG.timing.widgetDisplayMs, { done: onDone, hiding: onHiding });
+  }
+
+  // One rotation: schedule, then Dixper skills, then a rest, then repeat.
+  //
+  // Strictly chained rather than two independent setIntervals. Independent
+  // timers let the higher-priority Dixper widget re-queue itself while the
+  // schedule was still on screen, so the schedule could be starved out of the
+  // slot entirely. Here each step starts only once the previous one has left.
+  //
+  // A step that has nothing to show (event over, or clock outside every slot)
+  // calls straight through to the next, so the rotation never stalls.
+  //
+  // The top banner brackets the whole rotation: up as the schedule arrives,
+  // out the moment the Dixper panel starts leaving. Banner.hide() is called
+  // both then and again on `done`; it is idempotent, which also covers the
+  // case where the Dixper step is skipped and never shows a panel at all.
+  function runRotation() {
+    Banner.show();
+
+    queueFullSchedule(function () {
+      queueDixperSkills(function () {
+        Banner.hide();
+        setTimeout(runRotation, CONFIG.timing.rotationRestMs);
+      }, Banner.hide);
+    });
   }
 
   function formatTime(isoString) {
@@ -172,7 +231,7 @@ var Widgets = (function () {
   }
 
   function init() {
-    scheduleTimedWidgets();
+    runRotation();   // starts immediately — the schedule is the first thing shown
   }
 
   return { init: init, enqueue: enqueue, queueDonation: queueDonation };

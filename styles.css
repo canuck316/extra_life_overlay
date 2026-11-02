@@ -40,25 +40,24 @@ body {
   height: 1080px;
 }
 
-/* --- Banners -------------------------------------------------------------
-   Full-canvas PNGs. The top art occupies roughly y 0-110, the bottom art
-   y 945-1080; persistent zones are placed clear of both so the banners
-   never cover live data when they slide in. */
+/* --- Banner --------------------------------------------------------------
+   Full-canvas PNG whose art occupies roughly y 0-110. The persistent zones
+   start below that, so the banner never covers live data when it slides in.
+   Driven by the widget rotation, not by a timer of its own. */
 
-#banner-top,
-#banner-bottom {
+#banner-top {
   position: absolute;
   top: 0;
   left: 0;
   width: 1920px;
   height: 1080px;
   z-index: var(--z-brand);
+  transform: translateY(-110%);   /* parked off the top of the canvas */
   transition: transform 0.6s ease;
   pointer-events: none;
 }
 
-#banner-top img,
-#banner-bottom img {
+#banner-top img {
   position: absolute;
   top: 0;
   left: 0;
@@ -66,33 +65,7 @@ body {
   height: 1080px;
 }
 
-/* Default: both off-screen */
-#banner-top    { transform: translateY(-110%); }
-#banner-bottom { transform: translateY(110%); }
-
-#banner-top.visible    { transform: translateY(0); }
-#banner-bottom.visible { transform: translateY(0); }
-
-/* Text drops into the four white boxes on the bottom banner art. */
-.banner-field {
-  position: absolute;
-  bottom: 20px;
-  height: 42px;
-  line-height: 42px;
-  font-family: var(--font-primary);
-  font-size: 24px;
-  font-weight: 700;
-  color: #111;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#banner-field-follower   { left: 78px;   width: 292px; }
-#banner-field-subscriber { left: 404px;  width: 296px; }
-#banner-field-donor      { left: 1232px; width: 300px; }
-#banner-field-top-donor  { left: 1562px; width: 296px; }
+#banner-top.visible { transform: translateY(0); }
 
 /* --- Persistent zone: current / upcoming game (features.md #4) ----------- */
 
@@ -286,19 +259,26 @@ body {
 .widget-schedule-row .widget-game { flex: 1; }
 
 /* Pads a short page so the panel height — and so the title — stays put */
-.widget-schedule-row.is-filler { visibility: hidden; }
+.is-filler { visibility: hidden; }
 
 .widget-dixper-row .widget-skill { flex: 1; font-weight: 600; }
 
+/* Call to action under the Dixper skill list. No border of its own — the last
+   skill row's own border-bottom is the divider, so adding one here drew two
+   rules a few pixels apart. */
+.widget-cta {
+  margin-top: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-text);
+}
+
+/* Menu entries are name + dollar value only — no descriptions */
 .widget-dixper-row .widget-cost {
   min-width: 56px;
   text-align: right;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--color-brand-yellow);
-}
-
-.widget-dixper-row .widget-desc {
-  flex: 2;
-  font-size: 17px;
-  color: var(--color-text-muted);
 }
