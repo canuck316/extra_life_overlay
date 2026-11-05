@@ -36,6 +36,10 @@ var CONFIG = {
   // totals zones are unaffected. Absent counts as true.
   donationAlertEnabled: true,
 
+  // Optional alert sound. null = silent, and nothing is fetched.
+  donationAlertSound: null,     // e.g. 'assets/donation-alert.mp3'
+  donationAlertVolume: 0.8,     // 0-1; anything unparseable falls back to 1
+
   schedule: [
     {
       // An empty string means the slot is scheduled but the game is not yet
@@ -159,6 +163,12 @@ The alert lives in `widgets.js` but runs **outside the widget queue**, with its 
 Every one of those timers is guarded by an `alertRun` counter that increments per alert. Several donations can play back to back; without the guard, a previous alert's pending timers would write over the current one's text partway through.
 
 `renderMarquee()` measures `scrollWidth` against `clientWidth` after inserting the text and only applies the scroll animation when it actually overflows, feeding the shift distance and duration into CSS custom properties.
+
+### Alert sound
+
+`CONFIG.donationAlertSound` is loaded into a single `Audio` element by `initAlertSound()` at startup, not constructed per donation, so the file is buffered before the event rather than on the first alert. One element suffices because alerts are serialised with `ALERT_GAP_MS` between them and so never overlap. A load error drops the element to `null`, which degrades to a silent alert instead of warning on every donation.
+
+This is the one place the overlay can have playback genuinely refused. The video is `muted` and has no audio track, so its `play()` is never blocked; an unmuted `Audio` is subject to Chromium's autoplay policy. OBS launches its browser source with autoplay permitted. A regular browser tab does not permit it until the page has user activation, which is why testing outside OBS needs a click on the page first. `playAlertSound()` therefore catches the rejection and logs it rather than letting it propagate — the text sequence and the video must run regardless.
 
 `ALERT_FADE_MS` in `widgets.js` must match the `transition` on `#donation-alert-text` in `styles.css`, the same way `FADE_MS` in `schedule.js` matches `#game-zone-inner`.
 

@@ -53,6 +53,12 @@ When a new donation is detected, a **centre-screen alert video** plays with the 
 
 With a message that is 3 phases of ~2.8s; without, 2 phases of ~4.2s. The phases divide whatever remains after a lead-in and lead-out, which hold the text clear of the artwork's own animated entrance and exit.
 
+**Optional sound.** `CONFIG.donationAlertSound` takes a path to an audio file — `.mp3`, `.ogg`, `.wav`, `.m4a`, anything Chromium decodes — played at the same moment the video starts, so the two stay in step. `null` means a silent alert and nothing is fetched. `CONFIG.donationAlertVolume` (0–1, default `0.8`) sets the level; the alert video has no audio track, so this is the only sound the overlay makes.
+
+The file is loaded into a single `Audio` element at init, not per donation, so it is buffered well before the first one arrives. Reusing one element is safe because alerts are serialised with a gap between them and so can never overlap. A missing or undecodable file logs once and leaves the alert running silently.
+
+**Autoplay is the one caveat.** The video is muted, so it can never be refused; an unmuted sound can be. OBS starts its browser source with autoplay permitted, so this works there without any ceremony. A normal browser tab blocks it until the page has received a click — if you are testing outside OBS and hear nothing, click the overlay and fire another donation. A blocked sound logs a warning and never prevents the alert itself from playing.
+
 **Font sizes are absolute, not scaled.** `--alert-scale` sizes the box and the artwork; the three font sizes and the text shadow are plain px and have to be scaled by hand to match. They are currently set for `0.24` — 23px donor, 30px amount, 17px message. Moving the scale without moving these will push the text out of the blue band.
 
 **Text is white, with a soft drop shadow.** It sits over the blue band, and the shadow keeps it legible as the band's stripes animate beneath it. The text block sits 3% below the band's own top edge on purpose: these strings are bold and mostly free of descenders — amounts especially — so geometric centring reads as too high, and the offset lines up cap-height centre with the band centre instead.
@@ -61,6 +67,8 @@ With a message that is 3 phases of ~2.8s; without, 2 phases of ~4.2s. The phases
 
 **Configuration:**
 - `CONFIG.donationAlertEnabled` — `true` (default) or `false`, as above
+- `CONFIG.donationAlertSound` — path to an audio file, or `null` for silence
+- `CONFIG.donationAlertVolume` — `0`–`1`, default `0.8`
 - `CONFIG.timing.donationAlertMs` — how long the alert holds. **Must cover the video**, or it is cut off mid-playback
 - `CONFIG.timing.donationAlertLeadInMs` / `donationAlertLeadOutMs` — text held back at each end
 - The positioning of the text over the white panel is four percentage values on `#donation-alert-text` in `styles.css`

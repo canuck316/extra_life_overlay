@@ -33,6 +33,27 @@ var CONFIG = {
   // and don't want two alerts firing on the same donation.
   donationAlertEnabled: true,
 
+  // Optional sound to play with the donation alert. A path relative to
+  // overlay.html, or null for a silent alert. Any format Chromium decodes
+  // works — .mp3, .ogg, .wav, .m4a. Nothing is fetched while this is null,
+  // and a missing or unplayable file leaves the alert running silently
+  // rather than breaking it.
+  //
+  // The alert .webm has no audio track of its own, so this is the only thing
+  // the overlay ever makes a noise with. Set the browser source's own volume
+  // in OBS if you want to ride it against game audio.
+  //
+  // AUTOPLAY: OBS starts its browser source with autoplay permitted, so this
+  // just works there. A normal browser tab blocks unmuted autoplay until the
+  // page has been clicked once — if you are testing outside OBS and hear
+  // nothing, click the overlay and fire another donation. A blocked sound
+  // logs a warning and never stops the alert from playing.
+  donationAlertSound: null,   // e.g. 'assets/donation-alert.mp3'
+
+  // Level for that sound, 0 (silent) to 1 (full). Out-of-range or
+  // unparseable values fall back to 1.
+  donationAlertVolume: 0.8,
+
   twitch: {
     clientId: '',       // Twitch app Client ID (from dev.twitch.tv)
     accessToken: '',    // pre-generated User Access Token (generate before event)

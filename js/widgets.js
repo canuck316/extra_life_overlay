@@ -150,10 +150,62 @@ var Widgets = (function () {
   var alertShowing  = false;
   var alertRun      = 0;     // bumped per alert, so stale timers can bail out
 
+  var alertSound    = null;  // one reused Audio element, or null when unconfigured
+
   // Absent means on, so a config written before this flag existed keeps the
   // behaviour it had.
   function alertsEnabled() {
     return CONFIG.donationAlertEnabled !== false;
+  }
+
+  function alertVolume() {
+    var n = typeof CONFIG.donationAlertVolume === 'number'
+          ? CONFIG.donationAlertVolume
+          : parseFloat(CONFIG.donationAlertVolume);
+    if (isNaN(n)) return 1;
+    return Math.max(0, Math.min(1, n));
+  }
+
+  // One Audio element for the whole event, built at init so the file is
+  // buffered long before the first donation lands. Reusing it is safe because
+  // alerts are serialised with ALERT_GAP_MS between them, so a sound is never
+  // asked to overlap itself.
+  function initAlertSound() {
+    if (!alertsEnabled()) return;
+
+    var src = CONFIG.donationAlertSound;
+    if (!src) return;   // null or '' — a silent alert, and nothing is fetched
+
+    alertSound = new Audio(src);
+    alertSound.preload = 'auto';
+    alertSound.volume = alertVolume();
+
+    // Decoding happens off the main path, so a bad path or an unsupported
+    // codec surfaces here rather than at play() time. Drop the element so the
+    // alert runs silently instead of warning on every single donation.
+    alertSound.addEventListener('error', function () {
+      console.warn('[overlay] donation alert sound could not be loaded: ' + src +
+                   ' — alerts will play silently');
+      alertSound = null;
+    });
+  }
+
+  function playAlertSound() {
+    if (!alertSound) return;
+
+    try { alertSound.currentTime = 0; } catch (err) { /* not seekable yet */ }
+
+    var playing = alertSound.play();
+    if (playing && playing.catch) {
+      playing.catch(function (err) {
+        // Unlike the muted video, this can legitimately be refused: Chromium
+        // blocks unmuted autoplay without a user gesture. OBS permits it; a
+        // plain browser tab does not until the page has been clicked. Either
+        // way the alert itself carries on.
+        console.warn('[overlay] donation alert sound was blocked: ' +
+                     (err && err.name ? err.name : err));
+      });
+    }
   }
 
   function queueDonation(donation) {
@@ -211,6 +263,8 @@ var Widgets = (function () {
         });
       }
     }
+
+    playAlertSound();   // started with the video, so the two stay in step
 
     // Lead-in and lead-out keep the text clear of the artwork's own animated
     // entrance and exit; whatever is left is split evenly between the phases.
@@ -414,6 +468,7 @@ var Widgets = (function () {
   function init() {
     applyWidgetSide();            // before the first widget is drawn, so it parks on the correct edge
     applyDonationAlertSetting();  // before the first poll can land a donation
+    initAlertSound();             // buffers the sound now rather than on the first donation
     runRotation();                // starts immediately — the schedule is the first thing shown
   }
 

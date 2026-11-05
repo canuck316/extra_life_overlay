@@ -34,4 +34,4 @@ Serve with any static HTTP server (e.g. `npx serve .` or `python -m http.server 
 
 ## Configuration
 
-All event-specific data lives in `config.js` — participant/team IDs, game schedule with time slots, Dixper menu, per-game skill suggestions, and widget timing intervals. Edit this file each year before the event.
+All event-specific data lives in `config.js` — participant/team IDs, game schedule with time slots, Dixper menu, per-game skill suggestions, widget timing intervals, which side of the canvas the widgets sit on, and the donation alert's on/off switch, sound file and volume. Edit this file each year before the event.
