@@ -24,6 +24,15 @@ var CONFIG = {
   // same edge. Anything else falls back to 'right' with a console warning.
   widgetSide: 'right',
 
+  // Centre-screen donation alert on or off. Turning it off does not touch
+  // donation polling — the Raised and Team totals still update, and the
+  // overlay still records which donations it has seen. Only the alert
+  // itself is suppressed, and the alert video is discarded instead of being
+  // held in memory for the whole event.
+  // Useful if you are running a separate alert box (Streamlabs, StreamElements)
+  // and don't want two alerts firing on the same donation.
+  donationAlertEnabled: true,
+
   twitch: {
     clientId: '',       // Twitch app Client ID (from dev.twitch.tv)
     accessToken: '',    // pre-generated User Access Token (generate before event)

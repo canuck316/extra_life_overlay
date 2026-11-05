@@ -39,11 +39,13 @@ Shows the fundraising progress for both the individual participant and the team.
 
 When a new donation is detected, a **centre-screen alert video** plays with the donation details sequencing over it. This replaced an earlier side-panel card.
 
+**`CONFIG.donationAlertEnabled` turns the whole thing off.** Set it to `false` and no alert plays; the element is removed at init so the video is not held in memory for the event either. Nothing else changes — donations are still polled, still deduplicated, and the Raised and Team totals still update. Use it when a separate alert box (Streamlabs, StreamElements) is already firing on the same donations. An absent flag counts as enabled, so an older `config.js` behaves as it did.
+
 **It is not part of the widget queue.** The alert owns the centre of the screen and the rotation owns the lower right, so the two never contend for space: a donation fires the moment it is seen rather than waiting for whatever widget is mid-display, and it is free to play over one. It keeps a small queue of its own, because a single poll can return several new donations and they should play one after another rather than overwriting each other.
 
-**The video:** `assets/DonoAlert-10s.webm` — VP9, 1920×1080, 10.043s, **with an alpha channel** and **no audio track**. Because it is already canvas-sized with the artwork positioned inside it, the element is simply the whole canvas; nothing centres it in CSS. The absent audio track means muted autoplay can never be refused.
+**The video:** `assets/DonoAlert-10s.webm` — VP9, 1920×1080, 10.043s, **with an alpha channel** and **no audio track**. The absent audio track means muted autoplay can never be refused. The alert box is sized from `--alert-scale` (a fraction of the 1920×1080 artwork, currently `0.40`) and centred on the canvas. Sizing the box rather than applying `transform: scale()` keeps the font sizes independent of the artwork scale, while the text layer's percentage offsets still track it.
 
-**Text phases.** The artwork has a white panel in its lower half. Text appears there one phase at a time, each fading out before the next fades in:
+**Text phases.** The artwork carries a diagonally striped blue band across roughly 39–58% of its height. Text appears over that band one phase at a time, each fading out before the next fades in:
 
 1. Donor display name
 2. Donation amount
@@ -51,11 +53,12 @@ When a new donation is detected, a **centre-screen alert video** plays with the 
 
 With a message that is 3 phases of ~2.8s; without, 2 phases of ~4.2s. The phases divide whatever remains after a lead-in and lead-out, which hold the text clear of the artwork's own animated entrance and exit.
 
-**Text colour is dark, not white.** The panel behind it is white, so the overlay's usual white text would be invisible. It uses the brand dark blue, matching the Extra Life logo above it in the same artwork.
+**Text is white, with a soft drop shadow.** It sits over the blue band, and the shadow keeps it legible as the band's stripes animate beneath it. The text block sits 3% below the band's own top edge on purpose: these strings are bold and mostly free of descenders — amounts especially — so geometric centring reads as too high, and the offset lines up cap-height centre with the band centre instead.
 
 **The message marquee scrolls only when it overflows.** The text is measured after insertion; a message that fits sits centred, because a marquee that doesn't need to move reads as a glitch. Note that messages are already capped at 64 characters (see below), so at the default font size the marquee rarely engages — raise `MAX_MESSAGE_CHARS` if you want longer messages to scroll.
 
 **Configuration:**
+- `CONFIG.donationAlertEnabled` — `true` (default) or `false`, as above
 - `CONFIG.timing.donationAlertMs` — how long the alert holds. **Must cover the video**, or it is cut off mid-playback
 - `CONFIG.timing.donationAlertLeadInMs` / `donationAlertLeadOutMs` — text held back at each end
 - The positioning of the text over the white panel is four percentage values on `#donation-alert-text` in `styles.css`
@@ -220,7 +223,7 @@ All event-specific data is isolated in `config.js`. To set up a new event year:
 2. Replace `schedule[]` with the new game lineup and time slots
 3. Update `dixperMenu[]` with the current Dixper effect prices
 4. Add `suggestedDixperSkills` per game entry
-5. Set `widgetSide` to whichever side of the stream layout is free that year
+5. Set `widgetSide` to whichever side of the stream layout is free that year, and `donationAlertEnabled` according to whether another alert box is running
 6. Replace assets in `/assets/` with that year's official Extra Life files
 
 No code changes required — only `config.js` and `/assets/`.

@@ -32,6 +32,10 @@ var CONFIG = {
   // The accent border and the slide-in direction follow it.
   widgetSide: 'right',
 
+  // false suppresses the centre-screen donation alert. Polling, dedup and the
+  // totals zones are unaffected. Absent counts as true.
+  donationAlertEnabled: true,
+
   schedule: [
     {
       // An empty string means the slot is scheduled but the game is not yet
@@ -143,6 +147,8 @@ init → runRotation
 ```
 
 ## Donation alert (`widgets.js`)
+
+`CONFIG.donationAlertEnabled` gates it in two places: `queueDonation()` returns immediately when it is off, and `applyDonationAlertSetting()` removes `#donation-alert` from the DOM at init. The second is what stops the `preload="auto"` video from holding a decoded 1920×1080 frame store for the whole event — it cannot prevent the request, which the parser has already started before any script runs, only abandon it. The check reads `!== false`, so a `config.js` predating the flag keeps the behaviour it had.
 
 The alert lives in `widgets.js` but runs **outside the widget queue**, with its own `alertQueue` / `alertShowing` pair. It occupies the centre of the screen while the rotation occupies the lower right, so there is nothing to arbitrate: a donation plays immediately rather than waiting on a widget, and the two can be visible together. It still queues internally, because one poll can return several donations.
 

@@ -44,10 +44,13 @@
       <div id="widget-dixper-skills" class="widget"></div>
     </div>
 
-    <!-- Donation alert (features.md #3). The .webm is a full-canvas 1920x1080
-         VP9 with an alpha channel, so the artwork's own placement centres it;
-         this element is not positioned or sized independently. The text layer
-         sits over the white panel in the lower half of that artwork. -->
+    <!-- Donation alert (features.md #3). The .webm is a 1920x1080 VP9 with an
+         alpha channel; this box is sized from --alert-scale and centred, so one
+         CSS value scales the whole alert. The text layer sits over the striped
+         blue band across the middle of the artwork.
+
+         widgets.js removes this element entirely when
+         CONFIG.donationAlertEnabled is false. -->
     <div id="donation-alert">
       <video id="donation-alert-video"
              src="assets/DonoAlert-10s.webm"

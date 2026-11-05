@@ -150,7 +150,14 @@ var Widgets = (function () {
   var alertShowing  = false;
   var alertRun      = 0;     // bumped per alert, so stale timers can bail out
 
+  // Absent means on, so a config written before this flag existed keeps the
+  // behaviour it had.
+  function alertsEnabled() {
+    return CONFIG.donationAlertEnabled !== false;
+  }
+
   function queueDonation(donation) {
+    if (!alertsEnabled()) return;   // polling and the totals zones carry on regardless
     alertQueue.push(donation);
     if (!alertShowing) playNextAlert();
   }
@@ -389,9 +396,25 @@ var Widgets = (function () {
     slot.classList.add('side-' + side);
   }
 
+  // Drops the alert element when the flag is off, rather than only ignoring
+  // donations. The <video> carries preload="auto" and so starts buffering as
+  // soon as the HTML is parsed; removing it releases that buffer instead of
+  // holding a decoded 1920x1080 frame store for the whole event. The fetch
+  // itself has already begun by the time any script runs, so this cannot
+  // prevent the request — only abandon it.
+  function applyDonationAlertSetting() {
+    if (alertsEnabled()) return;
+
+    var el = document.getElementById('donation-alert');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+    console.info('[overlay] donation alerts disabled by config — ' +
+                 'donations still poll and still update the totals');
+  }
+
   function init() {
-    applyWidgetSide();   // before the first widget is drawn, so it parks on the correct edge
-    runRotation();       // starts immediately — the schedule is the first thing shown
+    applyWidgetSide();            // before the first widget is drawn, so it parks on the correct edge
+    applyDonationAlertSetting();  // before the first poll can land a donation
+    runRotation();                // starts immediately — the schedule is the first thing shown
   }
 
   return { init: init, enqueue: enqueue, queueDonation: queueDonation };
