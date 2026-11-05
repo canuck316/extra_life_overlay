@@ -48,7 +48,7 @@ var CONFIG = {
   // page has been clicked once — if you are testing outside OBS and hear
   // nothing, click the overlay and fire another donation. A blocked sound
   // logs a warning and never stops the alert from playing.
-  donationAlertSound: null,   // e.g. 'assets/donation-alert.mp3'
+  donationAlertSound: 'assets/alert.mp3',
 
   // Level for that sound, 0 (silent) to 1 (full). Out-of-range or
   // unparseable values fall back to 1.
