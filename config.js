@@ -18,6 +18,12 @@ var CONFIG = {
   // 3 x this many games are shown.
   fullScheduleRowsPerPage: 5,
 
+  // Which side of the canvas the rotating widgets (the schedule and the
+  // Dixper skills) sit on: 'right' or 'left'. The yellow accent border moves
+  // to whichever side is the outer edge, and the panels slide in from that
+  // same edge. Anything else falls back to 'right' with a console warning.
+  widgetSide: 'right',
+
   twitch: {
     clientId: '',       // Twitch app Client ID (from dev.twitch.tv)
     accessToken: '',    // pre-generated User Access Token (generate before event)

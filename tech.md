@@ -28,6 +28,10 @@ var CONFIG = {
   participantId: 12345,
   teamId: 67890,
 
+  // Which side of the canvas the rotating widgets sit on: 'right' or 'left'.
+  // The accent border and the slide-in direction follow it.
+  widgetSide: 'right',
+
   schedule: [
     {
       // An empty string means the slot is scheduled but the game is not yet
@@ -121,6 +125,7 @@ Widgets are overlay panels that slide in, display for `widgetDisplayMs`, then sl
 - `render` is either a single function or an array of page render functions; the engine draws each page, waits `holdMs` (default `widgetDisplayMs`), then advances, hiding after the last
 - Donation alerts do **not** enter this queue at all; see the donation alert section below
 - CSS transitions handle enter/exit animation (translate + opacity); no JS animation
+- `applyWidgetSide()` runs before the first widget is drawn and mirrors `CONFIG.widgetSide` onto `#widget-slot` as `.side-left` / `.side-right`; see the side-placement note under CSS Conventions
 
 ```
 init → runRotation
@@ -186,7 +191,8 @@ Maintains a `Set` of seen `donationID` values. On each poll, filters the respons
 ## CSS Conventions
 
 - Variables in `:root` for brand colors, font sizes, z-index layers
-- Widget panels: `position: absolute`, off-screen by default (`transform: translateX(110%)`), animated to `translateX(0)` when `.visible` is added
+- Widget panels: `position: absolute`, off-screen by default (`transform: translateX(var(--widget-park))`), animated to `translateX(0)` when `.visible` is added
+- **Side placement**: the four values that differ between a left-hand and a right-hand widget slot — edge offset, the two accent-border widths, and the park direction — are custom properties set on `#widget-slot.side-left` / `.side-right`, so `.widget` itself is written once rather than duplicated under a mirrored selector. The border is declared on both sides with one width zeroed, which is what lets a single shorthand cover either orientation. Every `var()` in `.widget` carries the right-hand value as its fallback, so the panels are placed correctly in the window before `widgets.js` applies the class
 - Persistent zones (current game, donation total): always visible, no animation
 - Extra Life `.webm` assets: `<video autoplay loop muted playsinline>`
 

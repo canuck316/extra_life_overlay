@@ -206,20 +206,49 @@ body {
   pointer-events: none;
 }
 
+/* Side placement, from CONFIG.widgetSide — widgets.js puts .side-left or
+   .side-right on #widget-slot at init. Everything that differs between the
+   two sides is a custom property, so the panel rules below are written once
+   rather than duplicated under a mirrored selector.
+
+   The accent border always lands on the canvas edge, which is the same rule
+   the persistent zones follow (the game zone carries border-left on the left,
+   the totals border-right on the right), and the panel parks off that same
+   edge so it slides in from outside the canvas. */
+#widget-slot.side-right {
+  --widget-left: auto;
+  --widget-right: 48px;
+  --widget-border-left: 0;
+  --widget-border-right: 6px;
+  --widget-park: 110%;
+}
+
+#widget-slot.side-left {
+  --widget-left: 48px;
+  --widget-right: auto;
+  --widget-border-left: 6px;
+  --widget-border-right: 0;
+  --widget-park: -110%;
+}
+
+/* Every fallback below is the right-hand value, so the panels are still
+   placed correctly in the moment before widgets.js applies the class. */
 .widget {
   position: absolute;
-  right: 48px;
+  left: var(--widget-left, auto);
+  right: var(--widget-right, 48px);
   bottom: 190px;
   width: 560px;
   max-height: 620px;
   padding: 16px 28px;
   overflow: hidden;
   opacity: 0;
-  transform: translateX(110%);
+  transform: translateX(var(--widget-park, 110%));
   transition: var(--transition-widget);
   pointer-events: none;
   background: var(--color-panel);
-  border-right: 6px solid var(--color-brand-yellow);
+  border-left:  var(--widget-border-left, 0) solid var(--color-brand-yellow);
+  border-right: var(--widget-border-right, 6px) solid var(--color-brand-yellow);
   border-radius: 6px;
 }
 

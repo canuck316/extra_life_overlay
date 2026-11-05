@@ -370,8 +370,28 @@ var Widgets = (function () {
       .replace(/"/g, '&quot;');
   }
 
+  // Mirrors CONFIG.widgetSide onto the slot as a class. styles.css does the
+  // rest — edge offset, which side carries the yellow border, and which way
+  // the panels slide in from.
+  function applyWidgetSide() {
+    var slot = document.getElementById('widget-slot');
+    if (!slot) return;
+
+    var side = String(CONFIG.widgetSide || 'right').toLowerCase();
+    if (side !== 'left' && side !== 'right') {
+      console.warn('[overlay] CONFIG.widgetSide should be "left" or "right"; got ' +
+                   JSON.stringify(CONFIG.widgetSide) + ' — using "right"');
+      side = 'right';
+    }
+
+    slot.classList.remove('side-left');
+    slot.classList.remove('side-right');
+    slot.classList.add('side-' + side);
+  }
+
   function init() {
-    runRotation();   // starts immediately — the schedule is the first thing shown
+    applyWidgetSide();   // before the first widget is drawn, so it parks on the correct edge
+    runRotation();       // starts immediately — the schedule is the first thing shown
   }
 
   return { init: init, enqueue: enqueue, queueDonation: queueDonation };

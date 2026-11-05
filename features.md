@@ -175,6 +175,12 @@ This is the **only** Dixper widget. There is no separate "full menu" display: th
 
 All widgets share a single display slot — only one is ever visible.
 
+### Which side of the screen
+
+`CONFIG.widgetSide` places the slot on the `'right'` (default) or the `'left'`. Three things move together with it: the panel's edge offset, the yellow accent border, and the direction it slides in from. The border always sits on the canvas edge, so it reads as the panel's outer trim on either side, matching the persistent zones — the game zone carries its border on the left, the totals on the right.
+
+The flip is a single class on the slot; the panel's own rules are written once and read the per-side values as custom properties. An unrecognised value warns to the console and falls back to `'right'`.
+
 ### The rotation
 
 The two scheduled widgets run as **one fixed sequence**, not on independent timers:
@@ -202,7 +208,7 @@ Two things sit outside it, each owning their own screen space:
 - The **donation alert** (feature 3) — centre screen, fires on its own the moment a donation is seen, with its own small queue. It can play over a rotation widget; they do not overlap on screen
 - The **current / upcoming game zone** (feature 4) — a persistent zone, upper left, swapping its own contents on a schedule-derived cadence
 
-That leaves the queue holding only the two lower-right panels, which the rotation feeds strictly one at a time. Priority (`dixperSkills` 1, `fullSchedule` 2) therefore only matters if both are ever queued at once, which the chained rotation avoids by construction. A widget cannot be queued again while one of the same type is already pending.
+That leaves the queue holding only the two rotation panels, which the rotation feeds strictly one at a time. Priority (`dixperSkills` 1, `fullSchedule` 2) therefore only matters if both are ever queued at once, which the chained rotation avoids by construction. A widget cannot be queued again while one of the same type is already pending.
 
 ---
 
@@ -214,6 +220,7 @@ All event-specific data is isolated in `config.js`. To set up a new event year:
 2. Replace `schedule[]` with the new game lineup and time slots
 3. Update `dixperMenu[]` with the current Dixper effect prices
 4. Add `suggestedDixperSkills` per game entry
-5. Replace assets in `/assets/` with that year's official Extra Life files
+5. Set `widgetSide` to whichever side of the stream layout is free that year
+6. Replace assets in `/assets/` with that year's official Extra Life files
 
 No code changes required — only `config.js` and `/assets/`.
