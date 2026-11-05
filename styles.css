@@ -101,7 +101,7 @@ body {
 
 .game-label {
   margin-bottom: 2px;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -109,14 +109,14 @@ body {
 }
 
 .game-name {
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 700;
   line-height: 1.1;
 }
 
 .game-time {
   margin-top: 5px;
-  font-size: 22px;
+  font-size: 16px;
   color: var(--color-text-muted);
 }
 
@@ -142,7 +142,7 @@ body {
 }
 
 .totals-label {
-  font-size: 18px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -150,7 +150,7 @@ body {
 }
 
 .totals-value {
-  font-size: 38px;
+  font-size: 32px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -160,7 +160,7 @@ body {
 }
 
 .totals-row-team .totals-value {
-  font-size: 26px;
+  font-size: 20px;
 }
 
 .totals-bar {
@@ -181,7 +181,7 @@ body {
 
 .totals-goal {
   margin-top: 4px;
-  font-size: 17px;
+  font-size: 11px;
   color: var(--color-text-muted);
 }
 
