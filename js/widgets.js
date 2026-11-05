@@ -1,10 +1,16 @@
-// Timed widget rotation engine
-// Priority queue: donations (1) > dixper skills (2) > full schedule (3)
-// The current / upcoming game zone is NOT in this queue — it is a persistent
-// zone owned by schedule.js (features.md #4).
+// Widget rotation engine
+//
+// Two things are deliberately NOT in this queue:
+//   - the current / upcoming game zone, a persistent zone owned by
+//     schedule.js (features.md #4)
+//   - the donation alert, which owns the centre of the screen and fires on
+//     its own as soon as a donation is seen (features.md #3)
+//
+// What remains is a fixed rotation of the two lower-right panels, so the
+// priority below only orders them if both are ever queued at once.
 
 var Widgets = (function () {
-  var PRIORITY = { donation: 1, dixperSkills: 2, fullSchedule: 3 };
+  var PRIORITY = { dixperSkills: 1, fullSchedule: 2 };
 
   var MAX_SCHEDULE_PAGES = 3;   // features.md #5 — bounds how long the widget holds
 
@@ -28,7 +34,7 @@ var Widgets = (function () {
   //               instead of trailing it.
   function enqueue(type, render, holdMs, opts) {
     opts = opts || {};
-    if (queuedTypes.has(type) && type !== 'donation') {
+    if (queuedTypes.has(type)) {
       safely(type + ' onDone', opts.done);   // already pending — don't stall the chain
       return;
     }
@@ -98,7 +104,6 @@ var Widgets = (function () {
 
   function getWidgetEl(type) {
     var map = {
-      donation:     'widget-donation',
       fullSchedule: 'widget-full-schedule',
       dixperSkills: 'widget-dixper-skills'
     };
@@ -126,15 +131,126 @@ var Widgets = (function () {
     return cut.replace(/[\s,.;:!?-]+$/, '') + '…';
   }
 
+  // --- Donation alert -------------------------------------------------------
+  // Deliberately OUTSIDE the widget queue. The alert owns the centre of the
+  // screen while the rotation owns the lower right, so the two never contend
+  // for space — a donation fires the moment it is seen instead of waiting for
+  // whatever widget is mid-display, and it can play over one quite happily.
+  //
+  // It keeps its own small queue all the same: a single poll can return
+  // several new donations, and those should play one after another rather than
+  // overwriting each other.
+  //
+  // Text sequences over the artwork's blue band: donor name, then amount, then
+  // the message if there is one, each fading out before the next fades in.
+
+  var ALERT_FADE_MS = 350;   // must match the transition on #donation-alert-text
+  var ALERT_GAP_MS  = 600;   // breath between back-to-back alerts
+  var alertQueue    = [];
+  var alertShowing  = false;
+  var alertRun      = 0;     // bumped per alert, so stale timers can bail out
+
   function queueDonation(donation) {
-    enqueue('donation', function (el) {
-      var message = truncateMessage(donation.message);
-      el.innerHTML =
-        '<div class="widget-label">New Donation</div>' +
-        '<div class="widget-donor">' + escapeHtml(donation.displayName || 'Anonymous') + '</div>' +
-        '<div class="widget-amount">' + Donations.formatCurrency(donation.amount) + '</div>' +
-        (message ? '<div class="widget-message">' + escapeHtml(message) + '</div>' : '');
+    alertQueue.push(donation);
+    if (!alertShowing) playNextAlert();
+  }
+
+  function playNextAlert() {
+    if (!alertQueue.length) { alertShowing = false; return; }
+
+    var el = document.getElementById('donation-alert');
+    if (!el) {                       // no alert element — drop rather than spin
+      alertQueue.length = 0;
+      alertShowing = false;
+      return;
+    }
+
+    alertShowing = true;
+    var donation = alertQueue.shift();
+
+    var phases = [
+      { cls: 'is-donor',  text: donation.displayName || 'Anonymous' },
+      { cls: 'is-amount', text: Donations.formatCurrency(donation.amount) }
+    ];
+    var message = truncateMessage(donation.message);
+    if (message) phases.push({ cls: 'is-message', text: message, marquee: true });
+
+    safely('donation alert', function () { runDonationAlert(el, phases); });
+    el.classList.add('visible');
+
+    setTimeout(function () {
+      el.classList.remove('visible');
+      setTimeout(playNextAlert, ALERT_GAP_MS);
+    }, CONFIG.timing.donationAlertMs);
+  }
+
+  function runDonationAlert(el, phases) {
+    var run    = ++alertRun;   // any timer from a previous alert is now stale
+    var video  = el.querySelector('video');
+    var textEl = el.querySelector('#donation-alert-text');
+    if (!textEl) return;
+
+    textEl.className = '';
+    textEl.innerHTML = '';
+
+    if (video) {
+      try { video.currentTime = 0; } catch (err) { /* not seekable yet */ }
+      var playing = video.play();
+      if (playing && playing.catch) {
+        playing.catch(function (err) {
+          // The file has no audio track and the element is muted, so autoplay
+          // should never be refused — but the text must still run if it is.
+          console.warn('[overlay] donation alert video did not play:', err);
+        });
+      }
+    }
+
+    // Lead-in and lead-out keep the text clear of the artwork's own animated
+    // entrance and exit; whatever is left is split evenly between the phases.
+    var leadIn  = CONFIG.timing.donationAlertLeadInMs;
+    var leadOut = CONFIG.timing.donationAlertLeadOutMs;
+    var window_ = Math.max(0, CONFIG.timing.donationAlertMs - leadIn - leadOut);
+    var each    = window_ / phases.length;
+
+    phases.forEach(function (phase, i) {
+      var inAt  = leadIn + i * each;
+      var outAt = inAt + each - ALERT_FADE_MS;
+
+      setTimeout(function () {
+        if (run !== alertRun) return;
+        textEl.className = phase.cls;
+        if (phase.marquee) {
+          renderMarquee(textEl, phase.text, each - ALERT_FADE_MS);
+        } else {
+          textEl.textContent = phase.text;
+        }
+        // Next frame, so the browser has a start value to transition from.
+        requestAnimationFrame(function () {
+          if (run === alertRun) textEl.classList.add('show');
+        });
+      }, inAt);
+
+      setTimeout(function () {
+        if (run !== alertRun) return;
+        textEl.classList.remove('show');
+      }, Math.max(inAt, outAt));
     });
+  }
+
+  // Scrolls the message only if it genuinely overflows the panel. A short
+  // message just sits centred — a marquee that doesn't need to move reads as
+  // a glitch.
+  function renderMarquee(el, text, durationMs) {
+    el.innerHTML = '<span class="alert-marquee"></span>';
+    var span = el.firstChild;
+    span.textContent = text;
+
+    var overflow = span.scrollWidth - el.clientWidth;
+    if (overflow > 0) {
+      span.style.setProperty('--marquee-shift', '-' + (overflow + 24) + 'px');
+      span.style.animationDuration = (durationMs / 1000) + 's';
+      span.classList.add('is-scrolling');
+    }
   }
 
   // Builds the shell once, then swaps only the rows. The title is never

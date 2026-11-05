@@ -37,12 +37,33 @@ Shows the fundraising progress for both the individual participant and the team.
 
 ## 3. Recent Donation Notification
 
-When a new donation is detected, it interrupts the widget queue at high priority and displays a notification card.
+When a new donation is detected, a **centre-screen alert video** plays with the donation details sequencing over it. This replaced an earlier side-panel card.
+
+**It is not part of the widget queue.** The alert owns the centre of the screen and the rotation owns the lower right, so the two never contend for space: a donation fires the moment it is seen rather than waiting for whatever widget is mid-display, and it is free to play over one. It keeps a small queue of its own, because a single poll can return several new donations and they should play one after another rather than overwriting each other.
+
+**The video:** `assets/DonoAlert-10s.webm` — VP9, 1920×1080, 10.043s, **with an alpha channel** and **no audio track**. Because it is already canvas-sized with the artwork positioned inside it, the element is simply the whole canvas; nothing centres it in CSS. The absent audio track means muted autoplay can never be refused.
+
+**Text phases.** The artwork has a white panel in its lower half. Text appears there one phase at a time, each fading out before the next fades in:
+
+1. Donor display name
+2. Donation amount
+3. The message — **only if there is one**
+
+With a message that is 3 phases of ~2.8s; without, 2 phases of ~4.2s. The phases divide whatever remains after a lead-in and lead-out, which hold the text clear of the artwork's own animated entrance and exit.
+
+**Text colour is dark, not white.** The panel behind it is white, so the overlay's usual white text would be invisible. It uses the brand dark blue, matching the Extra Life logo above it in the same artwork.
+
+**The message marquee scrolls only when it overflows.** The text is measured after insertion; a message that fits sits centred, because a marquee that doesn't need to move reads as a glitch. Note that messages are already capped at 64 characters (see below), so at the default font size the marquee rarely engages — raise `MAX_MESSAGE_CHARS` if you want longer messages to scroll.
+
+**Configuration:**
+- `CONFIG.timing.donationAlertMs` — how long the alert holds. **Must cover the video**, or it is cut off mid-playback
+- `CONFIG.timing.donationAlertLeadInMs` / `donationAlertLeadOutMs` — text held back at each end
+- The positioning of the text over the white panel is four percentage values on `#donation-alert-text` in `styles.css`
 
 **Displayed data:**
 - Donor display name (or "Anonymous" — the API returns `null` for anonymous donors)
 - Donation amount
-- Message, if provided. The API returns `null` when there is none, in which case no message element is rendered at all
+- Message, if provided. The API returns `null` when there is none, in which case the message phase is dropped entirely and the other two share the time
 
 **Message length:** messages are capped at `MAX_MESSAGE_CHARS` (64) in `js/widgets.js` and ellipsised past that. The cut backs up to the last word boundary when one falls reasonably near the limit, so it does not land mid-word, and any trailing punctuation is dropped before the ellipsis. Truncation runs on the raw text *before* HTML escaping — doing it after could slice an entity such as `&amp;` in half.
 
@@ -52,9 +73,8 @@ When a new donation is detected, it interrupts the widget queue at high priority
 - The API returns newest-first; iteration is reversed so that several donations arriving between two polls are announced oldest-first
 - Tracks seen donation IDs so each donation fires exactly once
 - `Donations.simulate()` is a console-only test helper that pushes a donation through this same path, so the alert can be exercised without waiting on a real one. It is never called by the overlay
-- Notification slides in, holds for `widgetDisplayMs`, then slides out
-- If multiple new donations arrive simultaneously, they queue and display sequentially
-- Donation notification takes priority over all timed widgets
+- The alert fades in, plays for `donationAlertMs`, then fades out
+- If multiple new donations arrive simultaneously, they play sequentially with a short gap between them
 
 ---
 
@@ -175,20 +195,14 @@ overlay starts
 - A step with nothing to show calls straight through to the next rather than stalling the rotation: the schedule is skipped once every game has ended, and the Dixper widget is skipped when the clock is outside every slot
 - **Why a sequence:** with independent intervals, the higher-priority Dixper widget could re-queue itself while the schedule was still on screen and win the slot again the moment the schedule finished, starving the schedule out entirely. Chaining removes the contention instead of tuning around it
 
-### Priority
+### What is not in the queue
 
-Priority now only decides what a **donation** interrupts, since the rotation never queues two of its own widgets at once:
+Two things sit outside it, each owning their own screen space:
 
-| Priority | Event |
-|---|---|
-| 1 (highest) | New donation notification |
-| 2 | Dixper skills widget |
-| 3 (lowest) | Full schedule widget |
+- The **donation alert** (feature 3) — centre screen, fires on its own the moment a donation is seen, with its own small queue. It can play over a rotation widget; they do not overlap on screen
+- The **current / upcoming game zone** (feature 4) — a persistent zone, upper left, swapping its own contents on a schedule-derived cadence
 
-- A donation queued while a rotation widget is on screen displays as soon as that widget finishes — it jumps ahead of the rotation's next step but does not cut off what is already visible
-- A widget cannot be queued again if an identical widget type is already in the queue; donations are exempt, so several can queue and display in sequence
-- The rotation's rest timer starts when the Dixper widget leaves, so a donation displaying during the rest does not delay the next cycle
-- The current / upcoming game zone (feature 4) is **not** in this queue — it is a persistent zone that swaps its own contents on a schedule-derived cadence, independently of everything above
+That leaves the queue holding only the two lower-right panels, which the rotation feeds strictly one at a time. Priority (`dixperSkills` 1, `fullSchedule` 2) therefore only matters if both are ever queued at once, which the chained rotation avoids by construction. A widget cannot be queued again while one of the same type is already pending.
 
 ---
 

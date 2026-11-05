@@ -143,6 +143,15 @@ var CONFIG = {
   timing: {
     donationPollMs:        60000,   // 1 min
     totalsPollMs:         120000,   // 2 min
+
+    // Donation alert. donationAlertMs must cover the .webm referenced in
+    // overlay.html — DonoAlert-10s.webm runs 10.043s. The lead-in and
+    // lead-out hold the text back while the artwork animates in and out;
+    // what remains is split evenly between the phases (name, amount, and
+    // the message when there is one).
+    donationAlertMs:       10100,   // full length of the alert video
+    donationAlertLeadInMs:   900,
+    donationAlertLeadOutMs:  900,
     // Run-in to the end of a slot: the game zone alternates between the
     // current game and the next one, then shows only the next one for the
     // final stretch.

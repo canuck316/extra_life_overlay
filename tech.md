@@ -119,7 +119,7 @@ Widgets are overlay panels that slide in, display for `widgetDisplayMs`, then sl
 - `enqueue(type, render, holdMs, opts)` — `opts.done` is what makes chaining possible. It must fire on **every** path, including when a widget declines to show (no remaining games, no active slot) and when an enqueue is rejected as a duplicate; otherwise the chain stalls and the overlay goes quiet for the rest of the event
 - `opts.hiding` fires the instant a panel starts its exit transition, 400ms before `done`. It exists so the top banner can leave together with the last widget instead of trailing it by the length of the transition
 - `render` is either a single function or an array of page render functions; the engine draws each page, waits `holdMs` (default `widgetDisplayMs`), then advances, hiding after the last
-- New donations still enter the same queue at highest priority — they jump ahead of the rotation's next step, but never cut off a widget already on screen
+- Donation alerts do **not** enter this queue at all; see the donation alert section below
 - CSS transitions handle enter/exit animation (translate + opacity); no JS animation
 
 ```
@@ -136,6 +136,20 @@ init → runRotation
                                               ↓
                                          runRotation
 ```
+
+## Donation alert (`widgets.js`)
+
+The alert lives in `widgets.js` but runs **outside the widget queue**, with its own `alertQueue` / `alertShowing` pair. It occupies the centre of the screen while the rotation occupies the lower right, so there is nothing to arbitrate: a donation plays immediately rather than waiting on a widget, and the two can be visible together. It still queues internally, because one poll can return several donations.
+
+`#donation-alert` is a centred box sized from `--alert-scale` holding a 1920×1080 VP9 `.webm` with an alpha channel. Sizing the box rather than applying `transform: scale()` keeps the font sizes independent of the artwork scale, while the text layer's percentage offsets continue to track the artwork.
+
+`runDonationAlert()` sequences the text itself rather than using the engine's page mechanism, because that mechanism swaps content instantly and these phases need to cross-fade. It rewinds the video to 0, plays it, then schedules a fade-in and fade-out per phase.
+
+Every one of those timers is guarded by an `alertRun` counter that increments per alert. Several donations can play back to back; without the guard, a previous alert's pending timers would write over the current one's text partway through.
+
+`renderMarquee()` measures `scrollWidth` against `clientWidth` after inserting the text and only applies the scroll animation when it actually overflows, feeding the shift distance and duration into CSS custom properties.
+
+`ALERT_FADE_MS` in `widgets.js` must match the `transition` on `#donation-alert-text` in `styles.css`, the same way `FADE_MS` in `schedule.js` matches `#game-zone-inner`.
 
 ## banner.js
 
@@ -167,7 +181,7 @@ A slot with no suggestions of its own falls back to 4 menu items picked at rando
 
 ## donations.js
 
-Maintains a `Set` of seen `donationID` values. On each poll, filters the response (newest-first by default) to only new entries, then dispatches them to the widget queue. Stores the last-known totals for the persistent display zones. Passes `If-None-Match` / `If-Modified-Since` headers on totals polls to take advantage of 304 responses.
+Maintains a `Set` of seen `donationID` values. On each poll, filters the response (newest-first by default) to only new entries, then hands them to `Widgets.queueDonation()` — which drives the centre-screen alert, not the widget queue. Stores the last-known totals for the persistent display zones. Passes `If-None-Match` / `If-Modified-Since` headers on totals polls to take advantage of 304 responses.
 
 ## CSS Conventions
 

@@ -16,6 +16,14 @@
   --z-persistent: 10;
   --z-widgets: 20;
   --z-brand: 30;
+  --z-alert: 40;        /* donation alert sits above everything */
+
+  /* Donation alert size, as a fraction of the 1920x1080 artwork. The alert
+     box is sized from this and centred, so one number scales the whole thing.
+     The text layer is positioned in percentages of that box, so it follows
+     the artwork automatically — but the font sizes below do NOT scale with
+     it, and want revisiting if this moves far. */
+  --alert-scale: 0.40;
   --transition-widget: transform 0.4s ease, opacity 0.4s ease;
 }
 
@@ -229,19 +237,96 @@ body {
   color: var(--color-brand-yellow);
 }
 
-/* Donation notification */
-.widget-donor  { font-size: 32px; font-weight: 700; }
-.widget-amount { font-size: 44px; font-weight: 700; color: var(--color-brand-yellow); }
-.widget-message {
-  margin-top: 8px;
-  font-size: 20px;
-  font-style: italic;
-  color: var(--color-text-muted);
+/* --- Donation alert ------------------------------------------------------
+   A full-canvas 1920x1080 VP9 with alpha. The artwork positions itself, so
+   this layer is just the whole canvas; nothing here centres anything. */
 
-  /* Length is capped in JS (MAX_MESSAGE_CHARS in widgets.js), so no clamp is
-     needed here. This only stops one long unbroken run — a URL, say — from
-     pushing past the panel edge. */
-  overflow-wrap: break-word;
+#donation-alert {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width:  calc(1920px * var(--alert-scale));
+  height: calc(1080px * var(--alert-scale));
+  transform: translate(-50%, -50%);
+  z-index: var(--z-alert);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+#donation-alert.visible { opacity: 1; }
+
+#donation-alert video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Sits on the blue striped band, which spans roughly 39%-58% of the alert box
+   vertically and almost its full width. These four values are the ones to
+   nudge if the text sits off; they are percentages of the box, so they hold at
+   any --alert-scale. Keeping clear of the band's pointed ends limits the width.
+
+   `top` is 3% below the band's own top on purpose. Geometric centring reads as
+   too high here: these strings are bold and mostly free of descenders (amounts
+   especially), so their visual mass sits above the middle of the line box.
+   The offset aligns cap-height centre with the band centre, which is what the
+   eye actually reads as centred. */
+#donation-alert-text {
+  position: absolute;
+  top: 42%;
+  left: 15%;
+  width: 70%;
+  height: 19%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+
+  text-align: center;
+  white-space: nowrap;
+  font-size: 38px;
+  font-weight: 800;
+
+  /* White over the blue band. The band is diagonally striped in two blues, so
+     a soft shadow keeps the text legible as the stripes scroll beneath it. */
+  color: var(--color-text);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+
+  opacity: 0;
+  transition: opacity 0.35s ease;   /* must match ALERT_FADE_MS in widgets.js */
+}
+
+#donation-alert-text.show { opacity: 1; }
+
+/* The amount is the moment of the alert, so it gets more weight. */
+#donation-alert-text.is-amount { font-size: 50px; }
+
+/* Message phase. Only scrolls when it actually overflows; the shift distance
+   and duration are set from JS once the text has been measured. */
+#donation-alert-text.is-message {
+  font-size: 28px;
+  font-style: italic;
+  justify-content: center;
+}
+
+.alert-marquee {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.alert-marquee.is-scrolling {
+  animation-name: alert-marquee;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+@keyframes alert-marquee {
+  0%,  12% { transform: translateX(0); }
+  88%, 100% { transform: translateX(var(--marquee-shift, 0)); }
 }
 
 /* Schedule and Dixper rows */

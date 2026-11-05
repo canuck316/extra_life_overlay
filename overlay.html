@@ -40,9 +40,19 @@
 
     <!-- Widget slot (one visible at a time) -->
     <div id="widget-slot">
-      <div id="widget-donation"      class="widget"></div>
       <div id="widget-full-schedule" class="widget"></div>
       <div id="widget-dixper-skills" class="widget"></div>
+    </div>
+
+    <!-- Donation alert (features.md #3). The .webm is a full-canvas 1920x1080
+         VP9 with an alpha channel, so the artwork's own placement centres it;
+         this element is not positioned or sized independently. The text layer
+         sits over the white panel in the lower half of that artwork. -->
+    <div id="donation-alert">
+      <video id="donation-alert-video"
+             src="assets/DonoAlert-10s.webm"
+             muted playsinline preload="auto"></video>
+      <div id="donation-alert-text"></div>
     </div>
 
   </div>
