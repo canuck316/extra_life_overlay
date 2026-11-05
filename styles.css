@@ -22,10 +22,10 @@
      box is sized from this and centred, so one number scales the whole thing.
      The text layer is positioned in percentages of that box, so its placement
      follows the artwork automatically — but the font sizes and the text shadow
-     are absolute px and do NOT scale with it. They were last set for 0.16; if
+     are absolute px and do NOT scale with it. They were last set for 0.24; if
      this number moves, scale those by the same factor or the text will no
-     longer fit the blue band. 0.16 gives a 307x173 alert. */
-  --alert-scale: 0.16;
+     longer fit the blue band. 0.24 gives a 461x259 alert. */
+  --alert-scale: 0.24;
   --transition-widget: transform 0.4s ease, opacity 0.4s ease;
 }
 
@@ -324,7 +324,7 @@ body {
 
   text-align: center;
   white-space: nowrap;
-  font-size: 15px;
+  font-size: 23px;
   font-weight: 800;
 
   /* White over the blue band. The band is diagonally striped in two blues, so
@@ -332,7 +332,7 @@ body {
      The shadow is scaled down with the type — at the full offset it read as a
      smudge rather than a shadow once the alert shrank. */
   color: var(--color-text);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
 
   opacity: 0;
   transition: opacity 0.35s ease;   /* must match ALERT_FADE_MS in widgets.js */
@@ -341,12 +341,12 @@ body {
 #donation-alert-text.show { opacity: 1; }
 
 /* The amount is the moment of the alert, so it gets more weight. */
-#donation-alert-text.is-amount { font-size: 20px; }
+#donation-alert-text.is-amount { font-size: 30px; }
 
 /* Message phase. Only scrolls when it actually overflows; the shift distance
    and duration are set from JS once the text has been measured. */
 #donation-alert-text.is-message {
-  font-size: 11px;
+  font-size: 17px;
   font-style: italic;
   justify-content: center;
 }
