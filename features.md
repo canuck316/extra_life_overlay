@@ -43,7 +43,7 @@ When a new donation is detected, a **centre-screen alert video** plays with the 
 
 **It is not part of the widget queue.** The alert owns the centre of the screen and the rotation owns the lower right, so the two never contend for space: a donation fires the moment it is seen rather than waiting for whatever widget is mid-display, and it is free to play over one. It keeps a small queue of its own, because a single poll can return several new donations and they should play one after another rather than overwriting each other.
 
-**The video:** `assets/DonoAlert-10s.webm` — VP9, 1920×1080, 10.043s, **with an alpha channel** and **no audio track**. The absent audio track means muted autoplay can never be refused. The alert box is sized from `--alert-scale` (a fraction of the 1920×1080 artwork, currently `0.40`) and centred on the canvas. Sizing the box rather than applying `transform: scale()` keeps the font sizes independent of the artwork scale, while the text layer's percentage offsets still track it.
+**The video:** `assets/DonoAlert-10s.webm` — VP9, 1920×1080, 10.043s, **with an alpha channel** and **no audio track**. The absent audio track means muted autoplay can never be refused. The alert box is sized from `--alert-scale` (a fraction of the 1920×1080 artwork, currently `0.16`, giving a 307×173 alert) and centred on the canvas. Sizing the box rather than applying `transform: scale()` keeps the font sizes independent of the artwork scale, while the text layer's percentage offsets still track it.
 
 **Text phases.** The artwork carries a diagonally striped blue band across roughly 39–58% of its height. Text appears over that band one phase at a time, each fading out before the next fades in:
 
@@ -53,9 +53,11 @@ When a new donation is detected, a **centre-screen alert video** plays with the 
 
 With a message that is 3 phases of ~2.8s; without, 2 phases of ~4.2s. The phases divide whatever remains after a lead-in and lead-out, which hold the text clear of the artwork's own animated entrance and exit.
 
+**Font sizes are absolute, not scaled.** `--alert-scale` sizes the box and the artwork; the three font sizes and the text shadow are plain px and have to be scaled by hand to match. They are currently set for `0.16` — 15px donor, 20px amount, 11px message. Moving the scale without moving these will push the text out of the blue band.
+
 **Text is white, with a soft drop shadow.** It sits over the blue band, and the shadow keeps it legible as the band's stripes animate beneath it. The text block sits 3% below the band's own top edge on purpose: these strings are bold and mostly free of descenders — amounts especially — so geometric centring reads as too high, and the offset lines up cap-height centre with the band centre instead.
 
-**The message marquee scrolls only when it overflows.** The text is measured after insertion; a message that fits sits centred, because a marquee that doesn't need to move reads as a glitch. Note that messages are already capped at 64 characters (see below), so at the default font size the marquee rarely engages — raise `MAX_MESSAGE_CHARS` if you want longer messages to scroll.
+**The message marquee scrolls only when it overflows.** The text is measured after insertion; a message that fits sits centred, because a marquee that doesn't need to move reads as a glitch. At the current `--alert-scale` the text box is only ~215px wide, so a message anywhere near the 64-character cap will overflow and scroll — the opposite of the earlier, larger alert, where the marquee rarely engaged at all.
 
 **Configuration:**
 - `CONFIG.donationAlertEnabled` — `true` (default) or `false`, as above
