@@ -196,6 +196,12 @@ Two distinct fallback labels, deliberately not merged: `UNDECIDED_LABEL` ("Undec
 
 Pure lookup over static `CONFIG` data — no polling, no state. Resolves a schedule entry's `suggestedDixperSkills` name strings against `CONFIG.dixperMenu` by `name`, capped at 4.
 
+An empty return value means "nothing to show", and `widgets.js` reads it as "skip the panel" rather than drawing an empty one. An empty `CONFIG.dixperMenu` therefore switches the widget off for the whole event, whatever the schedule lists, since a slot's names are resolved *through* the menu.
+
+That makes a throw from this module far more expensive than it was. The call now sits on the rotation chain, so an exception would stop `onDone` firing and stall every widget for the rest of the event, where before it only cost one appearance inside the render's `safely()` wrapper. Hence `menu()`, which normalises `CONFIG.dixperMenu` through `Array.isArray` instead of assuming it is an array — a missing or malformed menu degrades to "skip" rather than breaking the rotation.
+
+`widgets.js` resolves twice per appearance: once before `enqueue()` purely as an emptiness test, and again inside the render for the set it actually draws. The second call is what keeps the random fallback re-drawing on every appearance; collapsing them into one would freeze the draw at queue time.
+
 `MAX_SUGGESTIONS = 4` is a hard ceiling on both paths, not a page size. The full menu is never displayed, so `CONFIG.dixperMenu` serves only as the price lookup table and the random-draw pool.
 
 A slot with no suggestions of its own falls back to 4 menu items picked at random (partial Fisher-Yates over a copy of the menu). `widgets.js` calls the resolver **inside** the render function rather than before enqueueing, for two reasons: the random set is supposed to differ on every appearance, and a queued widget may not reach the screen until the schedule has moved into a different slot.

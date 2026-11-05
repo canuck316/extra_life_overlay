@@ -4,12 +4,28 @@ var Dixper = (function () {
 
   var MAX_SUGGESTIONS = 4;   // features.md #6 — hard cap, never show more
 
+  // Normalised access to the menu. An empty menu is a legitimate setup — it
+  // means the Dixper widget is switched off — and widgets.js now decides
+  // whether to show the panel by asking this module what it has. That makes a
+  // throw from here far more costly than it used to be: the call sits on the
+  // rotation chain, so an exception would stall every widget for the rest of
+  // the event rather than costing one appearance. Hence no assumption that
+  // CONFIG.dixperMenu is an array at all.
+  function menu() {
+    return Array.isArray(CONFIG.dixperMenu) ? CONFIG.dixperMenu : [];
+  }
+
   // Skills to highlight for the slot that is on right now.
   //
   // A slot that names its own skills shows exactly those (capped at 4). A slot
   // that names none gets a random handful instead, so the widget still has
   // something to say. Call this at render time, not queue time — the random
   // pick is meant to be different every time the widget animates in.
+  //
+  // Returns [] when there is nothing to show, which widgets.js treats as "skip
+  // the panel". An empty CONFIG.dixperMenu always lands here, whatever a slot
+  // lists in suggestedDixperSkills: those are names looked up in the menu, so
+  // with no menu there is nothing for them to resolve to.
   function getSuggestedSkillsForCurrentGame() {
     var current = Schedule.getCurrentGame();
     if (!current) return [];
@@ -19,12 +35,12 @@ var Dixper = (function () {
       return named
         .slice(0, MAX_SUGGESTIONS)
         .map(function (name) {
-          return CONFIG.dixperMenu.find(function (item) { return item.name === name; });
+          return menu().find(function (item) { return item.name === name; });
         })
         .filter(Boolean);   // drops a name with no matching menu entry
     }
 
-    return pickRandom(CONFIG.dixperMenu, MAX_SUGGESTIONS);
+    return pickRandom(menu(), MAX_SUGGESTIONS);
   }
 
   // Partial Fisher-Yates: shuffles only as far as it needs to.

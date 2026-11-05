@@ -173,10 +173,13 @@ This is the **only** Dixper widget. There is no separate "full menu" display: th
 - Second step of the widget rotation (see **Widget Rotation and Queue** below) — always shown directly after the schedule
 - Enters the widget queue, visible for `CONFIG.timing.widgetDisplayMs` (default 20s)
 - Reads `suggestedDixperSkills` from the current schedule entry in `CONFIG.schedule`
-- Cross-references skill names against `CONFIG.dixperMenu` by `name` to get dollar amounts. A name with no matching menu entry is dropped silently
+- Cross-references skill names against `CONFIG.dixperMenu` by `name` to get dollar amounts. A name with no matching menu entry is dropped silently — so a typo costs you that row with no warning, and if *every* name is a typo the whole widget is skipped
 - **Slot has suggestions:** exactly that set is shown, capped at the first 4
 - **Slot has no suggestions:** 4 skills are drawn at random from the full menu, **re-drawn every time the widget animates in** — a different set each appearance. The draw happens at render time, not when the widget is queued, so a widget sitting behind a donation alert still shows a fresh set and a title matching the slot that is actually live when it appears
-- If no current game is scheduled at all (clock outside every slot), the widget is suppressed
+- **The widget is skipped entirely, not shown blank, whenever there is nothing to put in it.** The rotation becomes schedule → rest → repeat. Three things land here:
+  - **`CONFIG.dixperMenu` is empty** — a deliberate "no Dixper this year". This holds *even when games list `suggestedDixperSkills`*, because those are names looked up in the menu: with no menu there is nothing for them to resolve to
+  - the clock is outside every slot
+  - every name a slot lists fails to resolve against the menu (all misspelled, say) — previously this drew a blank panel
 - Undecided slots (`game: ""`) still show skills — a game is being played, it just isn't named yet — but the title falls back to "Try These" with no game name appended. Since an undecided slot also has no suggestions of its own, it always draws the random 4
 - Note: Dixper runs its own OBS browser source that handles actual effect execution. This overlay is display-only — a viewer reference card
 

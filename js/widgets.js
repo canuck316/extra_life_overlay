@@ -371,7 +371,16 @@ var Widgets = (function () {
   }
 
   function queueDixperSkills(onDone, onHiding) {
-    if (!Schedule.getCurrentGame()) {      // nothing on — skip straight through
+    // Skip the step outright when there is nothing to put in the panel, rather
+    // than animating in a panel with no content. That covers an empty
+    // CONFIG.dixperMenu — a deliberate "no Dixper this year", which leaves the
+    // rotation as schedule -> rest -> repeat — as well as the clock sitting
+    // outside every slot, and a slot whose named skills all fail to resolve.
+    //
+    // This resolve is only an emptiness test; the render below resolves again
+    // for the set it actually draws, because a slot with no named skills is
+    // meant to show a different random handful on every appearance.
+    if (!Dixper.getSuggestedSkillsForCurrentGame().length) {
       safely('dixperSkills onHiding', onHiding);
       if (onDone) onDone();
       return;
@@ -383,6 +392,11 @@ var Widgets = (function () {
       // now the queue may have moved us into a different slot.
       var current = Schedule.getCurrentGame();
       var skills  = Dixper.getSuggestedSkillsForCurrentGame();
+
+      // Belt and braces. The check above has already established there was
+      // something to show, so this only fires if the slot changed between
+      // queueing and rendering — in which case drawing nothing beats leaving
+      // the previous rotation's skills on screen.
       if (!current || !skills.length) { el.innerHTML = ''; return; }
 
       el.innerHTML =
