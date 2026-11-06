@@ -207,13 +207,13 @@ overlay starts
   -> full schedule widget   (3 pages x fullSchedulePageMs = 30s)
   -> dixper skills widget   (widgetDisplayMs = 20s)
   -> top banner slides out  (together with the Dixper panel)
-  -> rest                   (rotationRestMs = 5 min, nothing on screen)
+  -> rest                   (rotationRestMs = 10 min, nothing on screen)
   -> repeat
 ```
 
 - Each step begins only once the previous one has finished sliding out, so the two can never compete for the slot
 - The top banner brackets the whole rotation (feature 1). The engine exposes an `onHiding` hook that fires the instant a panel starts its exit transition — 400ms before `onDone` — so the banner leaves *with* the last widget rather than trailing it
-- The rest is measured from the moment the Dixper widget leaves, making the full cycle roughly 5m 50s rather than exactly 5 minutes
+- The rest is measured from the moment the Dixper widget leaves, so the full cycle is roughly 10m 50s rather than exactly 10 minutes. It also shortens over the event as finished games drop out of the schedule widget and it needs fewer pages: 3 pages while 11 or more games remain, then 2, then 1, taking the cycle down to about 10m 30s
 - A step with nothing to show calls straight through to the next rather than stalling the rotation: the schedule is skipped once every game has ended, and the Dixper widget is skipped when the clock is outside every slot
 - **Why a sequence:** with independent intervals, the higher-priority Dixper widget could re-queue itself while the schedule was still on screen and win the slot again the moment the schedule finished, starving the schedule out entirely. Chaining removes the contention instead of tuning around it
 

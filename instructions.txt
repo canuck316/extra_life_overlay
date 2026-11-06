@@ -116,7 +116,7 @@ DIXPER SKILLS
                        at all and only the schedule appears.
 
 TIMING (milliseconds - 1000 = 1 second)
-  rotationRestMs     300000   Quiet gap between each run of panels (5 min)
+  rotationRestMs     600000   Quiet gap between each run of panels (10 min)
   widgetDisplayMs     20000   How long the Dixper panel stays up (20 sec)
   fullSchedulePageMs  10000   How long each schedule page stays up (10 sec)
   donationPollMs      60000   How often it checks for new donations (1 min)

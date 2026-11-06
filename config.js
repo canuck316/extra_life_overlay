@@ -11,7 +11,7 @@ var CONFIG = {
   //
   // SET THIS TO null BEFORE THE EVENT.
   // e.g. '2026-11-07T08:10:00' = 10 min into the first game slot.
-  debugClockStart: null,
+  debugClockStart: '2026-11-07T08:10:00',
   // -------------------------------------------------------------------------
 
   // Full schedule widget: rows per page. Paged up to 3 pages, so at most
@@ -197,7 +197,7 @@ var CONFIG = {
     // The widget rotation is one fixed sequence: schedule -> Dixper skills ->
     // rest -> repeat. This is the rest, measured from the moment the Dixper
     // widget finishes sliding out.
-    rotationRestMs:       300000,   // 5 min
+    rotationRestMs:       600000,   // 10 min
     widgetDisplayMs:       20000,   // 20 sec — standard hold for one widget
     fullSchedulePageMs:    10000    // 10 sec — per schedule page (half the standard hold)
     // The top banner has no timing of its own — it is on screen for exactly as
