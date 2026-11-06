@@ -1,0 +1,200 @@
+===============================================================================
+EXTRA LIFE STREAM OVERLAY - SETUP AND OPTIONS
+===============================================================================
+
+This overlay shows your game schedule, Dixper effect suggestions, your
+fundraising totals, and a donation alert. It runs inside OBS as a web page.
+
+You only ever need to edit ONE file: config.js
+Everything else can be left alone.
+
+
+-------------------------------------------------------------------------------
+PART 1 - START THE OVERLAY (do this before every stream)
+-------------------------------------------------------------------------------
+
+The overlay needs a small local web server running. This takes 15 seconds.
+
+  1. Open the overlay folder in File Explorer.
+  2. Right-click an empty part of the window and choose "Open in Terminal".
+  3. Type this exactly, then press Enter:
+
+         py -m http.server 8080
+
+  4. Leave that window open. Minimise it, but DO NOT close it.
+
+If you close the window, the overlay goes blank. That's the most common
+problem - check this first if something stops working.
+
+To stop it when you're done streaming, click that window and press Ctrl+C,
+or just close it.
+
+
+-------------------------------------------------------------------------------
+PART 2 - ADD IT TO OBS (do this once)
+-------------------------------------------------------------------------------
+
+  1. In OBS, under "Sources", click the + button and choose "Browser".
+  2. Name it "Overlay" and click OK.
+  3. Fill in the properties:
+
+         URL      http://localhost:8080/overlay.html
+         Width    1920
+         Height   1080
+
+  4. TICK the box "Control audio via OBS".
+     This is what lets your viewers hear the donation alert sound. Without
+     it the sound only plays on your own speakers.
+
+  5. Leave everything else at its default and click OK.
+
+  6. Right-click the Overlay source, choose Transform, then "Fit to screen".
+
+  7. Drag "Overlay" to the TOP of your Sources list so it draws over your
+     game and webcam.
+
+Your OBS canvas should be 1920x1080. If it isn't, the overlay will be the
+wrong size.
+
+AFTER CHANGING config.js: right-click the Overlay source and choose
+"Refresh" (or reopen its properties and click OK). The overlay does not pick
+up changes on its own.
+
+
+-------------------------------------------------------------------------------
+PART 3 - OPTIONS YOU CAN CHANGE (in config.js)
+-------------------------------------------------------------------------------
+
+Open config.js in Notepad. Each setting is explained in the file itself as
+well. Keep the quote marks and commas exactly where they are.
+
+YOUR IDs
+  participantId      Your Extra Life participant number.
+  teamId             Your Extra Life team number.
+                     Get these wrong and your totals will show $0.00.
+
+WHERE THE PANELS SIT
+  widgetSide         'right' or 'left'
+                     Which side of the screen the schedule and Dixper panels
+                     slide in from. The yellow stripe moves with them.
+
+DONATION ALERT
+  donationAlertEnabled   true or false
+                     Set to false if you already use Streamlabs or
+                     StreamElements alerts and don't want two at once.
+                     Your totals keep updating either way.
+
+  donationAlertSound     'assets/alert.mp3'
+                     The sound that plays with the alert. Put your own file
+                     in the assets folder and put its name here. Use null
+                     (no quotes) for a silent alert.
+
+  donationAlertVolume    0.8
+                     How loud, from 0 (silent) to 1 (full).
+
+YOUR SCHEDULE
+  schedule           The list of game slots. Each one looks like this:
+
+                       {
+                         game: "Burglin' Gnomes",
+                         startTime: "2026-11-07T08:00:00",
+                         endTime:   "2026-11-07T10:00:00",
+                         suggestedDixperSkills: ["Baby Voice"]
+                       },
+
+                     - Times are YOUR local time. Keep the exact format:
+                       YYYY-MM-DDTHH:MM:SS  (note the T in the middle)
+                     - game: "" shows on stream as "Undecided". It does NOT
+                       mean a break - it means you're streaming but haven't
+                       picked the game yet.
+                     - suggestedDixperSkills is optional. Leave it as []
+                       and the overlay picks 4 at random instead.
+
+  fullScheduleRowsPerPage   5
+                     How many games per page of the schedule panel. It shows
+                     up to 3 pages, so 15 games maximum.
+
+DIXPER SKILLS
+  dixperMenu         Your list of effects and prices, like this:
+
+                       { "name": "Baby Voice", "value": "1" },
+
+                     - "value" is a whole dollar amount.
+                     - Only 4 skills are EVER shown at once.
+                     - Names in suggestedDixperSkills must match names here
+                       EXACTLY, including capital letters. A misspelled name
+                       is silently dropped from the list.
+                     - If this list is empty, the Dixper panel never shows
+                       at all and only the schedule appears.
+
+TIMING (milliseconds - 1000 = 1 second)
+  rotationRestMs     300000   Quiet gap between each run of panels (5 min)
+  widgetDisplayMs     20000   How long the Dixper panel stays up (20 sec)
+  fullSchedulePageMs  10000   How long each schedule page stays up (10 sec)
+  donationPollMs      60000   How often it checks for new donations (1 min)
+  totalsPollMs       120000   How often it updates your totals (2 min)
+
+                     A donation can take up to a minute to appear. That's
+                     normal - it's how often Extra Life is checked.
+
+TESTING ONLY
+  debugClockStart    Pretends the event is already running so you can see
+                     everything before the day. For example:
+
+                       debugClockStart: '2026-11-07T08:10:00',
+
+                     *** SET THIS BACK TO null BEFORE THE EVENT ***
+                     Leave it set and the overlay will show the wrong game
+                     all day.
+
+                       debugClockStart: null,
+
+LEAVE ALONE
+  twitch             Not currently used by anything. Ignore it.
+
+
+-------------------------------------------------------------------------------
+PART 4 - CHECK THESE BEFORE THE EVENT
+-------------------------------------------------------------------------------
+
+  [ ] debugClockStart is set to null
+  [ ] participantId and teamId are correct, and your real total shows
+  [ ] Every game slot has the right date and time
+  [ ] dixperMenu prices match what Dixper is actually charging
+  [ ] "Control audio via OBS" is ticked, and you can hear the alert
+  [ ] The server window (Part 1) is open and minimised
+
+
+-------------------------------------------------------------------------------
+PART 5 - IF SOMETHING LOOKS WRONG
+-------------------------------------------------------------------------------
+
+Overlay is completely blank
+  The server window from Part 1 was closed. Start it again, then refresh
+  the Browser source in OBS.
+
+Totals show $0.00
+  participantId or teamId is wrong, or you have no internet.
+
+Dixper panel never appears
+  Three possible reasons:
+    - dixperMenu is empty
+    - no game slot is running right now (check your start and end times -
+      the panel only shows while a game is actually on)
+    - every suggested skill name is misspelled
+
+Schedule shows but nothing else does
+  Same as above - this is what an empty dixperMenu looks like.
+
+Donation alert appears but is silent
+  "Control audio via OBS" is not ticked in the Browser source properties.
+
+Wrong game showing
+  debugClockStart is still set. Change it to null and refresh.
+
+It says "Taking a Break"
+  The current time is outside every slot in your schedule. Normal before
+  the event starts and after it ends.
+
+Changes to config.js did nothing
+  Refresh the Browser source in OBS. It doesn't reload by itself.
