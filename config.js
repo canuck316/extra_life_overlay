@@ -11,7 +11,7 @@ var CONFIG = {
   //
   // SET THIS TO null BEFORE THE EVENT.
   // e.g. '2026-11-07T08:10:00' = 10 min into the first game slot.
-  debugClockStart: '2026-11-07T08:10:00',
+  debugClockStart: null,
   // -------------------------------------------------------------------------
 
   // Full schedule widget: rows per page. Paged up to 3 pages, so at most
