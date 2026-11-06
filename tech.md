@@ -67,7 +67,7 @@ var CONFIG = {
     upcomingAlternateFromMin: 15,  // minutes left when the run-in alternation starts
     upcomingAlternateEveryMs: 15000, // how long each side holds
     upcomingTakeoverMin:      2,   // final minutes showing "up next" only
-    rotationRestMs:      600000,   // rest between widget rotations
+    rotationRestMs:      540000,   // rest between widget rotations
     widgetDisplayMs:      20000,   // how long each widget stays visible
     fullSchedulePageMs:   10000    // per page of the paged schedule widget
   }

@@ -197,7 +197,7 @@ var CONFIG = {
     // The widget rotation is one fixed sequence: schedule -> Dixper skills ->
     // rest -> repeat. This is the rest, measured from the moment the Dixper
     // widget finishes sliding out.
-    rotationRestMs:       600000,   // 10 min
+    rotationRestMs:       540000,   // 9 min — puts the whole cycle near 10 min
     widgetDisplayMs:       20000,   // 20 sec — standard hold for one widget
     fullSchedulePageMs:    10000    // 10 sec — per schedule page (half the standard hold)
     // The top banner has no timing of its own — it is on screen for exactly as
