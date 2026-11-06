@@ -34,6 +34,10 @@ var CONFIG = {
   // The accent border and the slide-in direction follow it.
   widgetSide: 'right',
 
+  // Top banner: 'animate' (with the rotation), 'always' or 'never'.
+  // Absent or unrecognised counts as 'animate'.
+  topBanner: 'animate',
+
   // false suppresses the centre-screen donation alert. Polling, dedup and the
   // totals zones are unaffected. Absent counts as true.
   donationAlertEnabled: true,
@@ -177,6 +181,8 @@ This is the one place the overlay can have playback genuinely refused. The video
 ## banner.js
 
 `assets/ExtraLife-TopLine.png` as a full-canvas layer, parked at `translateY(-110%)` and slid to `0` by a `.visible` class. No timers: `show()` / `hide()` are called by `runRotation()`, so the banner is up exactly while a rotation widget is. Both are idempotent, which matters because `hide()` is called twice per cycle (on `onHiding`, then again on `onDone`) and may be called without a matching `show()` when a rotation step is skipped.
+
+`CONFIG.topBanner` is read once in `init()`. `'always'` adds `.visible` and sets a `pinned` flag that makes `hide()` a no-op. `'never'` removes the element and nulls the reference, which turns both calls into no-ops. The rotation keeps calling `show()` / `hide()` in every mode, so `widgets.js` doesn't need to know which mode is set.
 
 `main.js` must call `Banner.init()` **before** `Widgets.init()`, since the rotation starts synchronously inside `Widgets.init()` and shows the banner on its first line.
 

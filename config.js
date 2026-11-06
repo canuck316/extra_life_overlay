@@ -24,6 +24,13 @@ var CONFIG = {
   // same edge. Anything else falls back to 'right' with a console warning.
   widgetSide: 'right',
 
+  // The Extra Life banner along the top of the screen:
+  //   'animate' — slides in with the rotating widgets and out with them
+  //   'always'  — on screen the whole time
+  //   'never'   — never shown
+  // Anything else falls back to 'animate' with a console warning.
+  topBanner: 'animate',
+
   // Centre-screen donation alert on or off. Turning it off does not touch
   // donation polling — the Raised and Team totals still update, and the
   // overlay still records which donations it has seen. Only the alert

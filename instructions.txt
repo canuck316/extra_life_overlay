@@ -66,6 +66,13 @@ WHERE THE PANELS SIT
                      Which side of the screen the schedule and Dixper panels
                      slide in from. The yellow stripe moves with them.
 
+TOP BANNER
+  topBanner          'animate', 'always' or 'never'
+                     The Extra Life banner along the top of the screen.
+                     'animate' slides it in and out with the panels,
+                     'always' keeps it up the whole time, and 'never' hides
+                     it completely.
+
 DONATION ALERT
   donationAlertEnabled   true or false
                      Set to false if you already use Streamlabs or

@@ -4,7 +4,9 @@
 
 Extra Life organizers provide official art each year. The overlay shows one banner — `assets/ExtraLife-TopLine.png` — to identify the stream as an official Extra Life event.
 
-**Behavior:**
+**`CONFIG.topBanner` picks the mode:** `'animate'` (default) behaves as described below; `'always'` shows the banner at init and ignores the rotation's `hide()` calls; `'never'` removes the element at init, so the rotation's calls do nothing. An absent value counts as `'animate'`, and anything unrecognised warns to the console and falls back to it.
+
+**Behavior (`'animate'`):**
 - A full-canvas PNG parked off the top of the screen (`translateY(-110%)`), sliding down to `translateY(0)` when shown
 - **Tied to the widget rotation, not to a timer of its own.** It slides in as the rotation's first widget arrives and starts sliding out the instant the last one does, so the branding is on screen exactly while a widget is — and the overlay is otherwise clean
 - `banner.js` holds no scheduling logic at all: just `show()` and `hide()`, both idempotent, called by `runRotation()` in `widgets.js`
