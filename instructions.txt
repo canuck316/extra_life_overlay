@@ -10,48 +10,36 @@ Everything else can be left alone.
 
 
 -------------------------------------------------------------------------------
-PART 1 - START THE OVERLAY (do this before every stream)
--------------------------------------------------------------------------------
-
-The overlay needs a small local web server running. This takes 15 seconds.
-
-  1. Open the overlay folder in File Explorer.
-  2. Right-click an empty part of the window and choose "Open in Terminal".
-  3. Type this exactly, then press Enter:
-
-         py -m http.server 8080
-
-  4. Leave that window open. Minimise it, but DO NOT close it.
-
-If you close the window, the overlay goes blank. That's the most common
-problem - check this first if something stops working.
-
-To stop it when you're done streaming, click that window and press Ctrl+C,
-or just close it.
-
-
--------------------------------------------------------------------------------
-PART 2 - ADD IT TO OBS (do this once)
+PART 1 - ADD IT TO OBS (do this once)
 -------------------------------------------------------------------------------
 
   1. In OBS, under "Sources", click the + button and choose "Browser".
   2. Name it "Overlay" and click OK.
-  3. Fill in the properties:
+  3. TICK the box "Local File", then click Browse and pick:
 
-         URL      http://localhost:8080/overlay.html
+         overlay.html
+
+  4. Set the size:
+
          Width    1920
          Height   1080
 
-  4. TICK the box "Control audio via OBS".
+  5. Put this in the Custom CSS box, replacing whatever is there:
+
+         body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }
+
+  6. TICK the box "Control audio via OBS".
      This is what lets your viewers hear the donation alert sound. Without
      it the sound only plays on your own speakers.
 
-  5. Leave everything else at its default and click OK.
+  7. Click OK.
 
-  6. Right-click the Overlay source, choose Transform, then "Fit to screen".
+  8. Right-click the Overlay source, choose Transform, then "Fit to screen".
 
-  7. Drag "Overlay" to the TOP of your Sources list so it draws over your
+  9. Drag "Overlay" to the TOP of your Sources list so it draws over your
      game and webcam.
+
+That's the whole setup. Nothing needs to be started or kept running.
 
 Your OBS canvas should be 1920x1080. If it isn't, the overlay will be the
 wrong size.
@@ -62,7 +50,7 @@ up changes on its own.
 
 
 -------------------------------------------------------------------------------
-PART 3 - OPTIONS YOU CAN CHANGE (in config.js)
+PART 2 - OPTIONS YOU CAN CHANGE (in config.js)
 -------------------------------------------------------------------------------
 
 Open config.js in Notepad. Each setting is explained in the file itself as
@@ -154,7 +142,7 @@ LEAVE ALONE
 
 
 -------------------------------------------------------------------------------
-PART 4 - CHECK THESE BEFORE THE EVENT
+PART 3 - CHECK THESE BEFORE THE EVENT
 -------------------------------------------------------------------------------
 
   [ ] debugClockStart is set to null
@@ -162,16 +150,25 @@ PART 4 - CHECK THESE BEFORE THE EVENT
   [ ] Every game slot has the right date and time
   [ ] dixperMenu prices match what Dixper is actually charging
   [ ] "Control audio via OBS" is ticked, and you can hear the alert
-  [ ] The server window (Part 1) is open and minimised
 
 
 -------------------------------------------------------------------------------
-PART 5 - IF SOMETHING LOOKS WRONG
+PART 4 - IF SOMETHING LOOKS WRONG
 -------------------------------------------------------------------------------
 
 Overlay is completely blank
-  The server window from Part 1 was closed. Start it again, then refresh
-  the Browser source in OBS.
+  The Browser source is pointing at the wrong file. Reopen its properties
+  and check "Local File" is ticked and the path ends in overlay.html.
+
+Overlay is there but the wrong size, or cut off
+  Right-click it, Transform, "Fit to screen". Check Width and Height are
+  1920 and 1080, and that your OBS canvas is 1920x1080 too.
+
+Overlay has a black background instead of being see-through
+  The Custom CSS from step 5 is missing.
+
+Overlay is hidden behind your game
+  Drag it to the top of the Sources list.
 
 Totals show $0.00
   participantId or teamId is wrong, or you have no internet.

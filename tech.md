@@ -5,15 +5,17 @@
 Static file overlay with no backend and no build step. The browser (OBS Browser Source) loads `overlay.html` directly from a local HTTP server. All state is in-memory; nothing is persisted between page loads.
 
 ```
-OBS Browser Source
-  └─ http://localhost:8080/overlay.html
+OBS Browser Source  (Local File)
+  └─ overlay.html
        ├─ styles.css
        ├─ config.js          (loaded first — global CONFIG object)
        └─ js/
             main.js → schedule.js, donations.js, widgets.js, dixper.js
 ```
 
-**Serving**: `npx serve .` or `python -m http.server 8080`. A server is required (not `file://`) because `fetch()` to the DonorDrive API requires an HTTP origin for CORS.
+**Serving**: in OBS, none. The Browser Source loads `overlay.html` as a **Local File** (`file://`) and the DonorDrive polling works, because OBS runs Chromium with `--disable-web-security` and so does not enforce CORS — see the CORS note under the API section. This is how the overlay is actually deployed.
+
+A static server (`npx serve .`, `py -m http.server 8080`) is only needed to test in a **regular** browser, where `file://` has no usable origin for `fetch()` and the API calls are blocked.
 
 ## Canvas
 

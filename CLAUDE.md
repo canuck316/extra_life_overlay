@@ -25,7 +25,9 @@ styles.css      All layout and animation styles
 
 ## Running
 
-Serve with any static HTTP server (e.g. `npx serve .` or `python -m http.server 8080`), then point an OBS Browser Source at `http://localhost:8080/overlay.html`. Canvas is 1920×1080.
+In OBS: add a Browser Source, tick **Local File**, point it at `overlay.html`, set 1920×1080, and set Custom CSS to `body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }`. No server needed — OBS disables web security, so `file://` origins can still reach the DonorDrive API. See `instructions.txt`.
+
+To test in a regular browser, serve the folder (`py -m http.server 8080`) — `file://` there has no origin for `fetch()` and the API calls fail.
 
 ## External APIs
 
