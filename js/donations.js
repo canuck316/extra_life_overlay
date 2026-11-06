@@ -6,7 +6,18 @@ var Donations = (function () {
 
   var seenDonationIds = new Set();
   var baselineTaken = false;   // see fetchDonations
-  var totalsEtag = null;
+
+  // DonorDrive sends `Cache-Control: public, max-age=14400` on every
+  // response, so a plain fetch() lets the browser reuse the first response
+  // for four hours — every later poll gets the same stale list back and a
+  // new donation never shows up. 'no-cache' makes the browser revalidate
+  // with the server each time (sending the ETag); when nothing changed the
+  // server answers 304 and the browser hands back its cached body, so polls
+  // stay cheap.
+  function getJSON(path) {
+    return fetch(BASE + path, { cache: 'no-cache' })
+      .then(function (res) { return res.json(); });
+  }
 
   var totals = {
     participantTotal: 0,
@@ -18,21 +29,10 @@ var Donations = (function () {
   var topDonor    = '';
 
   function fetchTotals() {
-    var headers = {};
-    if (totalsEtag) headers['If-None-Match'] = totalsEtag;
-
     Promise.all([
-      fetch(BASE + '/participants/' + CONFIG.participantId + API_VERSION, { headers: headers }),
-      fetch(BASE + '/teams/' + CONFIG.teamId + API_VERSION)
-    ]).then(function (responses) {
-      var participantRes = responses[0];
-      var teamRes = responses[1];
-
-      if (participantRes.status === 304) return Promise.all([null, teamRes.json()]);
-
-      totalsEtag = participantRes.headers.get('ETag');
-      return Promise.all([participantRes.json(), teamRes.json()]);
-    }).then(function (data) {
+      getJSON('/participants/' + CONFIG.participantId + API_VERSION),
+      getJSON('/teams/' + CONFIG.teamId + API_VERSION)
+    ]).then(function (data) {
       if (data[0]) {
         totals.participantTotal = data[0].sumDonations;
         totals.participantGoal  = data[0].fundraisingGoal;
@@ -48,8 +48,7 @@ var Donations = (function () {
   }
 
   function fetchDonations() {
-    fetch(BASE + '/participants/' + CONFIG.participantId + '/donations' + API_VERSION + '&limit=10')
-      .then(function (res) { return res.json(); })
+    getJSON('/participants/' + CONFIG.participantId + '/donations' + API_VERSION + '&limit=10')
       .then(function (donations) {
         if (donations.length) {
           latestDonor = donations[0].displayName || 'Anonymous';
@@ -78,6 +77,12 @@ var Donations = (function () {
         }
 
         fresh.forEach(function (d) { Widgets.queueDonation(d); });
+
+        // Refresh the totals now rather than waiting for the next totals poll
+        // (up to totalsPollMs away), so the Raised figure and progress bar
+        // move alongside the alert. DonorDrive's sumDonations already
+        // includes a donation by the time it appears in this list.
+        if (fresh.length) fetchTotals();
       })
       .catch(function (err) {
         console.warn('Donations poll failed:', err);
@@ -85,11 +90,10 @@ var Donations = (function () {
   }
 
   function fetchTopDonor() {
-    return fetch(
-      BASE + '/participants/' + CONFIG.participantId + '/donors' + API_VERSION +
+    return getJSON(
+      '/participants/' + CONFIG.participantId + '/donors' + API_VERSION +
       '&limit=1&orderBy=sumDonations%20DESC'
     )
-    .then(function (res) { return res.json(); })
     .then(function (donors) {
       if (donors.length) {
         topDonor = donors[0].displayName || 'Anonymous';
